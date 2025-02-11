@@ -1,7 +1,9 @@
-require("dotenv").config();
-const express = require("express");
-const cookieParser = require("cookie-parser");
-const session = require("express-session");
+import dotenv from "dotenv";
+import express from "express";
+import cookieParser from "cookie-parser";
+import session from "express-session";
+
+dotenv.config();
 
 const app = express();
 

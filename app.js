@@ -19,10 +19,13 @@ app.use(
 app.use(express.urlencoded({ extended: true })); //same use of body parser. its built in express itself.
 app.use(express.json()); // for parsing json to js object.
 
-app.use("/", adminAuthRouter);
+app.use("/", (req, res) => {
+  res.send("Hello world...");
+});
 
 //Server hosting locally
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server started on : http://localhost:${port}`);
 });
+

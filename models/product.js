@@ -46,6 +46,7 @@ const VariantSchema = new Schema({
   },
 });
 
+// schema for product
 const ProductSchema = new Schema({
   name: {
     type: Number,

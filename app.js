@@ -2,6 +2,8 @@ import dotenv from "dotenv";
 import express from "express";
 import cookieParser from "cookie-parser";
 import session from "express-session";
+import cors from 'cors'
+
 
 dotenv.config();
 

@@ -23,6 +23,9 @@ app.use(express.json()); // for parsing json to js object.
 app.use("/", (req, res) => {
   res.send("Hello world...");
 });
+app.use("/", (req, res) => {
+  res.send("Hello world...");
+});
 
 // starting server
 const port = process.env.PORT || 3000;

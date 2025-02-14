@@ -2,12 +2,13 @@ import dotenv from "dotenv";
 import express from "express";
 import cookieParser from "cookie-parser";
 import session from "express-session";
-import cors from 'cors'
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 
+app.use(cors());
 app.use(cookieParser());
 app.use(
   session({
@@ -32,4 +33,3 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server started on : http://localhost:${port}`);
 });
-

@@ -1,4 +1,4 @@
-const mongoose = require("../../config/database.config");
+import mongoose from '../config/database-config'
 
 const adminSchema = new mongoose.Schema({
   name: String,

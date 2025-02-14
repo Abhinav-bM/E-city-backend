@@ -1,6 +1,7 @@
-const Admin = require("../../models/admin/admin.model");
-const redis = require("../../config/redis.config");
-const mobileOTPHelper = require("../../helpers/mobileOTP.helper");
+
+import Admin from "../models/admin-model";
+import redis from "../config/redis-config";
+import mobileOtpHelper from "../utils/mobileOtp-helper";
 
 const sendOTP = async (req, res) => {
   try {
@@ -31,7 +32,7 @@ const sendOTP = async (req, res) => {
       ),
     ]);
 
-    const result = await mobileOTPHelper(phoneNumber, otp);
+    const result = await mobileOtpHelper(phoneNumber, otp);
 
     res.status(200).json({
       success: true,

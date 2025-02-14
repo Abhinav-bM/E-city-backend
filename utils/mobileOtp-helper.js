@@ -1,7 +1,6 @@
-const springedge = require("springedge");
-require("dotenv").config();
+import springedge from "springedge";
 
-const mobileOTPHelper = (mobileNumber, OTP) => {
+const mobileOtpHelper = (mobileNumber, OTP) => {
   return new Promise((resolve, reject) => {
     const params = {
       apikey: process.env.SPRINGEDGE_API_KEY,
@@ -21,4 +20,4 @@ const mobileOTPHelper = (mobileNumber, OTP) => {
   });
 };
 
-module.exports = mobileOTPHelper;
+module.exports = mobileOtpHelper;

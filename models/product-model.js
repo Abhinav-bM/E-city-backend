@@ -1,8 +1,7 @@
-import mongoose from "mongoose";
-const { Schema } = mongoose;
+import mongoose from "../config/database-config";
 
 // schema for product variant
-const VariantSchema = new Schema({
+const VariantSchema = new mongoose.Schema({
   color: {
     type: String,
     required: true,
@@ -47,7 +46,7 @@ const VariantSchema = new Schema({
 });
 
 // schema for product
-const ProductSchema = new Schema({
+const ProductSchema = new mongoose.Schema({
   name: {
     type: Number,
     required: true,

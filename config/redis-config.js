@@ -1,6 +1,5 @@
-const Redis = require("redis");
-const dotenv = require("dotenv");
-dotenv.config();
+import Redis from "ioredis";
+import dotenv from "dotenv";
 
 const redis = new Redis({
   host: process.env.REDIS_HOST,

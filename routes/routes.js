@@ -6,7 +6,7 @@ import productRouter from "./custom_routes/product-route.js";
 export const routes = (app) => {
   const router = Router();
 
-  router.use("/api/product", productRouter);
+  router.use("/api/product", productRouter(router));
 
   // default route - homepage
   router.use("/", (req, res) => {

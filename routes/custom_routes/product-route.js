@@ -1,8 +1,9 @@
 import productController from "../../controllers/product-controller.js";
 
 const productRouter = (router) => {
-  // product routes
   router.get("/create-product", productController.addProduct);
+
+  return router;
 };
 
 export default productRouter;

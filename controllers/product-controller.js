@@ -1,5 +1,5 @@
 const addProduct = async (req, res) => {
-  res.rend("product added successfully");
+  res.send("product added successfully");
 };
 
 export default { addProduct };

@@ -3,10 +3,15 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import cors from "cors";
+import { connectDB } from "./config/database-config.js";
+import { routes } from "./routes/routes.js";
 
 dotenv.config();
 
 const app = express();
+
+// connect to MongoDB
+connectDB();
 
 app.use(cors());
 app.use(cookieParser());
@@ -18,15 +23,12 @@ app.use(
     cookie: { secure: false }, // Set to true for https only
   })
 );
-app.use(express.urlencoded({ extended: true })); //same use of body parser. its built in express itself.
-app.use(express.json()); // for parsing json to js object.
+//same use of body parser. its built in express itself.
+app.use(express.urlencoded({ extended: true }));
+// for parsing json to js object.
+app.use(express.json());
 
-app.use("/", (req, res) => {
-  res.send("Hello world...");
-});
-app.use("/", (req, res) => {
-  res.send("Hello world...");
-});
+routes(app);
 
 // starting server
 const port = process.env.PORT || 3000;

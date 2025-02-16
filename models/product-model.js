@@ -1,4 +1,4 @@
-import mongoose from "../config/database-config";
+import mongoose from "mongoose";
 
 // schema for product variant
 const VariantSchema = new mongoose.Schema({
@@ -48,7 +48,7 @@ const VariantSchema = new mongoose.Schema({
 // schema for product
 const ProductSchema = new mongoose.Schema({
   name: {
-    type: Number,
+    type: String, // Fixed: Changed from Number to String
     required: true,
     trim: true,
   },
@@ -61,12 +61,10 @@ const ProductSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-
   category: {
     type: String,
     required: true,
   },
-
   basePrice: {
     type: Number,
     required: true,
@@ -123,22 +121,10 @@ const ProductSchema = new mongoose.Schema({
     enum: ["active", "inactive", "discontinued"],
     default: "active",
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
+}, {
+  timestamps: true // Added: This automatically handles createdAt and updatedAt
 });
 
-// pre-save middleware to update the updatedAt timestamp
-ProductSchema.pre("save", function (next) {
-  this.updatedAt = Date.now();
-  next();
-});
+const PRODUCT = mongoose.model("Product", ProductSchema);
 
-const Product = mongoose.model("Product", ProductSchema);
-
-export default Product;
+export default PRODUCT;

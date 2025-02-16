@@ -1,7 +1,7 @@
 import productController from "../../controllers/product-controller.js";
 
 const productRouter = (router) => {
-  router.get("/create-product", productController.addProduct);
+  router.post("/create-product", productController.addProduct);
 
   return router;
 };

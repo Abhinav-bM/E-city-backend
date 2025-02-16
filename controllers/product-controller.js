@@ -11,7 +11,11 @@ const addProduct = async (req, res) => {
     apiResponse.statusCode = 200;
     res.json(apiResponse);
   } catch (error) {
-    next(error);
+    console.error("Error while creating product");
+    const apiResponse = new ApiResponse();
+    apiResponse.message = "Error while creating product";
+    apiResponse.statusCode = 500;
+    return res.json(apiResponse);
   }
 };
 

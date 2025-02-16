@@ -46,84 +46,102 @@ const VariantSchema = new mongoose.Schema({
 });
 
 // schema for product
-const ProductSchema = new mongoose.Schema({
-  name: {
-    type: String, // Fixed: Changed from Number to String
-    required: true,
-    trim: true,
-  },
-  brand: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-  category: {
-    type: String,
-    required: true,
-  },
-  basePrice: {
-    type: Number,
-    required: true,
-  },
-  specifications: {
-    processor: {
+const ProductSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    brand: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
       type: String,
       required: true,
     },
-    display: {
-      size: Number,
-      resolution: String,
+    category: {
       type: String,
+      required: true,
     },
-    camera: {
-      main: String,
-      front: String,
+    basePrice: {
+      type: Number,
+      required: true,
     },
-    battery: {
-      capacity: Number,
-      type: String,
-    },
-    connectivity: [String],
-    features: [String],
-  },
-  variant: [VariantSchema],
-  images: [
-    {
-      url: {
+    specifications: {
+      processor: {
         type: String,
         required: true,
       },
-      alt: String,
-      isDefault: {
-        type: Boolean,
-        default: false,
+      display: {
+        size: {
+          type: Number,
+          required: true,
+        },
+        resolution: {
+          type: String,
+          required: true,
+        },
+      },
+      camera: {
+        main: {
+          type: String,
+        },
+        front: {
+          type: String,
+        },
+      },
+      battery: {
+        capacity: {
+          type: Number,
+          required: true,
+        },
+        batteryType: {
+          type: String,
+          required: true,
+        },
+      },
+      connectivity: [String],
+      features: [String],
+    },
+    variant: [VariantSchema],
+    images: [
+      {
+        url: {
+          type: String,
+          required: true,
+        },
+        alt: String,
+        isDefault: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+    ratings: {
+      averageRating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5,
+      },
+      totalReviews: {
+        type: Number,
+        default: 0,
       },
     },
-  ],
-  ratings: {
-    averageRating: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 5,
-    },
-    totalReviews: {
-      type: Number,
-      default: 0,
+    status: {
+      type: String,
+      enum: ["active", "inactive", "discontinued"],
+      default: "active",
     },
   },
-  status: {
-    type: String,
-    enum: ["active", "inactive", "discontinued"],
-    default: "active",
-  },
-}, {
-  timestamps: true // Added: This automatically handles createdAt and updatedAt
-});
+  {
+    timestamps: true, // Added: This automatically handles createdAt and updatedAt
+  }
+);
 
 const PRODUCT = mongoose.model("Product", ProductSchema);
 

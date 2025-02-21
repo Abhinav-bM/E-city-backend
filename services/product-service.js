@@ -4,4 +4,12 @@ const addProduct = async (obj) => {
   return await productRepository.createProduct(obj);
 };
 
-export default { addProduct };
+const getAllProducts = async () => {
+  return await productRepository.getAllProducts();
+};
+
+const getProduct = async (product_id) => {
+  return await productRepository.getProduct(product_id);
+};
+
+export default { addProduct, getAllProducts, getProduct };

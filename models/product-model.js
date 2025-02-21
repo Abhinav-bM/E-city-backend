@@ -33,6 +33,14 @@ const VariantSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  images: [
+    {
+      url: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
   stock: {
     type: Number,
     required: true,
@@ -66,23 +74,16 @@ const ProductSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    basePrice: {
-      type: Number,
-      required: true,
-    },
     specifications: {
       processor: {
         type: String,
-        required: true,
       },
       display: {
         size: {
           type: Number,
-          required: true,
         },
         resolution: {
           type: String,
-          required: true,
         },
       },
       camera: {
@@ -96,30 +97,15 @@ const ProductSchema = new mongoose.Schema(
       battery: {
         capacity: {
           type: Number,
-          required: true,
         },
         batteryType: {
           type: String,
-          required: true,
         },
       },
       connectivity: [String],
       features: [String],
     },
     variant: [VariantSchema],
-    images: [
-      {
-        url: {
-          type: String,
-          required: true,
-        },
-        alt: String,
-        isDefault: {
-          type: Boolean,
-          default: false,
-        },
-      },
-    ],
     ratings: {
       averageRating: {
         type: Number,
@@ -139,7 +125,7 @@ const ProductSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // Added: This automatically handles createdAt and updatedAt
+    timestamps: true,
   }
 );
 

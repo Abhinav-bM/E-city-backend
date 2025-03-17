@@ -4,12 +4,16 @@ const addProduct = async (obj) => {
   return await productRepository.createProduct(obj);
 };
 
-const getAllProducts = async () => {
-  return await productRepository.getAllProducts();
+const getAllProducts = async (page, size, filter) => {
+  return await productRepository.getAllProducts(page, size, filter);
 };
 
 const getProduct = async (product_id) => {
   return await productRepository.getProduct(product_id);
 };
 
-export default { addProduct, getAllProducts, getProduct };
+const editProduct = async (product_id, update_data) => {
+  return await productRepository.editProduct(product_id, update_data);
+};
+
+export default { addProduct, getAllProducts, getProduct, editProduct };

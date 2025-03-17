@@ -6,71 +6,35 @@ const createProduct = async (productObj) => {
   return product;
 };
 
-const getAllProducts = async () => {
-  const products = await PRODUCT.aggregate([
-    {
-      $addFields: {
-        baseVariantPrice: { $min: "$variant.price" },
-      },
-    },
-    {
-      $project: {
-        name: 1,
-        status: 1,
-        baseVariant: {
-          $arrayElemAt: [
-            {
-              $filter: {
-                input: "$variant",
-                as: "v",
-                cond: { $eq: ["$$v.price", "$baseVariantPrice"] },
-              },
-            },
-            0,
-          ],
-        },
-      },
-    },
-  ]);
+const getAllProducts = async (page, size, filter) => {
+  const total = await PRODUCT.countDocuments(filter);
+  const products = await PRODUCT.find(filter)
+    .skip((page - 1) * size)
+    .limit(size);
 
-  return products;
+  const data = { products, total };
+
+  return data;
 };
 
 const getProduct = async (product_id) => {
-  const product = await PRODUCT.aggregate([
-    {
-      $match: { _id: new mongoose.Types.ObjectId(product_id) },
-    },
-    {
-      $addFields: {
-        baseVariantPrice: { $min: "$variant.price" },
-      },
-    },
-    {
-      $project: {
-        name: 1,
-        status: 1,
-        baseVariant: {
-          $arrayElemAt: [
-            {
-              $filter: {
-                input: "$variant",
-                as: "v",
-                cond: { $eq: ["$$v.price", "$baseVariantPrice"] },
-              },
-            },
-            0,
-          ],
-        },
-      },
-    },
-  ]);
-
+  const product = await PRODUCT.findById(product_id);
   return product;
+};
+
+const editProduct = async (product_id, update_data) => {
+  const updated_product = await PRODUCT.findByIdAndUpdate(
+    product_id,
+    update_data,
+    { new: true, overwrite: true }
+  );
+
+  return updated_product;
 };
 
 export default {
   createProduct,
   getAllProducts,
   getProduct,
+  editProduct,
 };

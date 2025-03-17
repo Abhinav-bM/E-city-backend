@@ -1,59 +1,36 @@
 import mongoose from "mongoose";
 
-// schema for product variant
+// Schema for product variant
 const VariantSchema = new mongoose.Schema({
-  color: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  ram: {
-    size: {
-      type: Number,
-      required: true,
-    },
-    unit: {
-      type: String,
-      enum: ["GB", "TB"],
-      default: "GB",
-    },
-  },
-  storage: {
-    size: {
-      type: Number,
-      required: true,
-    },
-    unit: {
-      type: String,
-      enum: ["SSD", "HDD"],
-      required: true,
-    },
+  attributes: {
+    type: Object,
+    // required: true,
   },
   price: {
     type: Number,
-    required: true,
+    // required: true,
   },
   images: [
     {
       url: {
         type: String,
-        required: true,
+        // required: true,
       },
     },
   ],
   stock: {
     type: Number,
-    required: true,
+    // required: true,
     default: 0,
   },
   sku: {
     type: String,
-    required: true,
+    // required: true,
     unique: true,
   },
 });
 
-// schema for product
+// Schema for product
 const ProductSchema = new mongoose.Schema(
   {
     name: {
@@ -74,55 +51,31 @@ const ProductSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    specifications: {
-      processor: {
-        type: String,
-      },
-      display: {
-        size: {
-          type: Number,
-        },
-        resolution: {
+    images: [
+      {
+        url: {
           type: String,
+          required: true,
         },
       },
-      camera: {
-        main: {
-          type: String,
-        },
-        front: {
-          type: String,
-        },
-      },
-      battery: {
-        capacity: {
-          type: Number,
-        },
-        batteryType: {
-          type: String,
-        },
-      },
-      connectivity: [String],
-      features: [String],
+    ],
+    basePrice: {
+      type: Number,
+      required: true,
     },
-    variant: [VariantSchema],
-    ratings: {
-      averageRating: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 5,
+    variantAttributes: [
+      {
+        name: {
+          type: String,
+          required: true,
+        },
+        values: {
+          type: [String],
+          required: true,
+        },
       },
-      totalReviews: {
-        type: Number,
-        default: 0,
-      },
-    },
-    status: {
-      type: String,
-      enum: ["active", "inactive", "discontinued"],
-      default: "active",
-    },
+    ],
+    variants: [VariantSchema],
   },
   {
     timestamps: true,

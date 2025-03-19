@@ -3,6 +3,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import cors from "cors";
+import { connectRedis } from "./config/redis-config.js";
 import { connectDB } from "./config/database-config.js";
 import { routes } from "./routes/routes.js";
 
@@ -12,6 +13,9 @@ const app = express();
 
 // connect to MongoDB
 connectDB();
+
+// connect to Redis
+// connectRedis();
 
 app.use(cors());
 app.use(cookieParser());
@@ -24,7 +28,7 @@ app.use(
   })
 );
 //same use of body parser. its built in express itself.
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: false }));
 // for parsing json to js object.
 app.use(express.json());
 

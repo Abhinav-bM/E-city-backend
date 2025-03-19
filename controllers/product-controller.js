@@ -98,4 +98,4 @@ const editProduct = async (req, res) => {
   }
 };
 
-export default { addProduct, getAllProducts, getProduct, editProduct };
+export { addProduct, getAllProducts, getProduct, editProduct };

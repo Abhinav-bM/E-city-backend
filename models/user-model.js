@@ -1,4 +1,4 @@
-import mongoose from '../config/database-config'
+import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
@@ -10,5 +10,5 @@ const userSchema = new mongoose.Schema(
   { versionKey: false }
 );
 
-const user = mongoose.model("user", userSchema, "user");
-module.exports = user;
+const USER = mongoose.model("user", userSchema, "user");
+export default USER;

@@ -1,4 +1,4 @@
-import mongoose from '../config/database-config'
+import mongoose from "mongoose";
 
 const adminSchema = new mongoose.Schema({
   name: String,

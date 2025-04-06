@@ -1,5 +1,6 @@
 import springedge from "springedge";
-import client from "../config/redis-config.js";
+import redis from "../config/redis-config.js";
+
 export function generateOTP(length = 6) {
   const digits = "0123456789";
   let otp = "";
@@ -30,10 +31,10 @@ export const sendOtp = (mobileNumber, OTP) => {
 };
 
 export const storeOtp = (user_id, otp) => {
-  client.set(`otp${user_id}`, otp, "EX", 300);
+  redis.set(`otp${user_id}`, otp, "EX", 300);
 };
 
 export const verifyOtp = async (user_id, otp) => {
-  const storedOtp = await client.get(`otp:${user_id}`);
+  const storedOtp = await redis.get(`otp:${user_id}`);
   return storedOtp === otp;
 };

@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import PRODUCT from "../models/product-model.js";
 
 const createProduct = async (productObj) => {

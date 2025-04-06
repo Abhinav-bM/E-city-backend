@@ -1,15 +1,14 @@
 import {
   addProduct,
-  getProduct,
-  editProduct,
   getAllProducts,
+  getProductDetails,
 } from "../../controllers/product-controller.js";
+
 const productRouter = (router) => {
-  
   router.post("/create-product", addProduct);
-  router.get("/products", getAllProducts);
-  router.get("/:id", getProduct);
-  router.patch("/:id", editProduct);
+  router.get("/all", getAllProducts);
+  router.get("/:id", getProductDetails);
+  // router.patch("/:id", editProduct);
 
   return router;
 };

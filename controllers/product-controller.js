@@ -1,101 +1,86 @@
 import productServices from "../services/product-service.js";
 import ApiResponse from "../utils/api-response.js";
 
-// Create product
+// Create product with variants
 const addProduct = async (req, res) => {
   try {
-    const obj = req.body;
-    const productDetails = await productServices.addProduct(obj);
+    const productData = req.body;
+    const productDetails = await productServices.addProduct(productData);
+
     const apiResponse = new ApiResponse();
     apiResponse.message = "Product added successfully";
-    apiResponse.data = { productDetails };
-    apiResponse.statusCode = 200;
-    res.json(apiResponse);
+    apiResponse.data = productDetails;
+    apiResponse.statusCode = 201;
+
+    res.status(201).json(apiResponse);
   } catch (error) {
-    console.error("Error while creating product : ", error);
+    console.error("Error while creating product: ", error);
+
     const apiResponse = new ApiResponse();
     apiResponse.message = "Error while creating product";
+    apiResponse.error = error.message;
     apiResponse.statusCode = 500;
-    return res.json(apiResponse);
+
+    return res.status(500).json(apiResponse);
   }
 };
 
-// Get all product
+// Get product details with variants
+const getProductDetails = async (req, res) => {
+  try {
+    const baseProductId = req.params.id;
+    const productDetails =
+      await productServices.getProductDetails(baseProductId);
+
+    const apiResponse = new ApiResponse();
+    apiResponse.message = "Product details retrieved successfully";
+    apiResponse.data = productDetails;
+    apiResponse.statusCode = 200;
+
+    return res.status(200).json(apiResponse);
+  } catch (error) {
+    console.error("Error while fetching product details: ", error);
+
+    const apiResponse = new ApiResponse();
+    apiResponse.message = "Error while fetching product details";
+    apiResponse.error = error.message;
+    apiResponse.statusCode = 500;
+
+    return res.status(500).json(apiResponse);
+  }
+};
+
+// Get all products for listing
 const getAllProducts = async (req, res) => {
   try {
-    let { page = 1, size = 20, category, brand } = req.query;
+    const { page = 1, limit = 10, category, brand } = req.query;
 
-    page = parseInt(page);
-    size = parseInt(size);
+    const filters = {};
+    if (category) filters.category = category;
+    if (brand) filters.brand = brand;
 
-    let filter = {};
-    if (category) filter.category = category;
-    if (brand) filter.brand = brand;
-
-    const { products, total } = await productServices.getAllProducts(
-      page,
-      size,
-      filter
+    const products = await productServices.getAllProducts(
+      filters,
+      Number.parseInt(page),
+      Number.parseInt(limit)
     );
 
     const apiResponse = new ApiResponse();
-    apiResponse.message = "Products fetched successfully";
+    apiResponse.message = "Products retrieved successfully";
     apiResponse.data = products;
-    apiResponse.total = total;
-    apiResponse.page = page;
-    apiResponse.size = size;
-    apiResponse.total_pages = Math.ceil(total / size);
     apiResponse.statusCode = 200;
+
     res.json(apiResponse);
   } catch (error) {
-    console.error("Error while fetching products", error);
+    console.error("Error while fetching products: ", error);
+
     const apiResponse = new ApiResponse();
     apiResponse.message = "Error while fetching products";
+    apiResponse.error = error.message;
     apiResponse.statusCode = 500;
-    return res.json(apiResponse);
+
+    return res.status(500).json(apiResponse);
   }
 };
 
-// Get single product :id
-const getProduct = async (req, res) => {
-  try {
-    const product_id = req.params.id;
-    const product = await productServices.getProduct(product_id);
-    const apiResponse = new ApiResponse();
-    apiResponse.message = "Product fetched successfully";
-    apiResponse.data = product;
-    apiResponse.statusCode = 200;
-    res.json(apiResponse);
-  } catch (error) {
-    console.error("Error while fetching product", error);
-    const apiResponse = new ApiResponse();
-    apiResponse.message = "Error while fetching product";
-    apiResponse.statusCode = 500;
-    return res.json(apiResponse);
-  }
-};
-
-// Edit product
-const editProduct = async (req, res) => {
-  try {
-    const product_id = req.params.id;
-    const update_data = req.body;
-    const updated_product = await productServices.editProduct(
-      product_id,
-      update_data
-    );
-    const apiResponse = new ApiResponse();
-    apiResponse.message = "Product updated successfully";
-    apiResponse.data = updated_product;
-    apiResponse.statusCode = 200;
-    res.json(apiResponse);
-  } catch (error) {
-    console.error("Error updating product : ", error);
-    const apiResponse = new ApiResponse();
-    apiResponse.message = "Error while updating product";
-    apiResponse.status = 500;
-    return res.json(apiResponse);
-  }
-};
-
-export { addProduct, getAllProducts, getProduct, editProduct };
+export { addProduct, getProductDetails, getAllProducts };

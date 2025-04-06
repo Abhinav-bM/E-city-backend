@@ -1,7 +1,6 @@
-import { addToCart } from "../../controllers/cart-controller.js";
 
 const cartRouter = (router) => {
-  router.post("/add", addToCart);
+  // router.post("/add", addToCart);
   return router;
 };
 

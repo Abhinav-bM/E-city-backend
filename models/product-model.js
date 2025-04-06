@@ -1,37 +1,7 @@
 import mongoose from "mongoose";
 
-// Schema for product variant
-const VariantSchema = new mongoose.Schema({
-  attributes: {
-    type: Object,
-    // required: true,
-  },
-  price: {
-    type: Number,
-    // required: true,
-  },
-  images: [
-    {
-      url: {
-        type: String,
-        // required: true,
-      },
-    },
-  ],
-  stock: {
-    type: Number,
-    // required: true,
-    default: 0,
-  },
-  sku: {
-    type: String,
-    // required: true,
-    unique: true,
-  },
-});
-
-// Schema for product
-const ProductSchema = new mongoose.Schema(
+//Base/parent Product schema
+const BaseProductSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -40,16 +10,55 @@ const ProductSchema = new mongoose.Schema(
     },
     brand: {
       type: String,
-      required: true,
+      require: true,
       trim: true,
     },
     description: {
       type: String,
-      required: true,
+      require: true,
     },
     category: {
       type: String,
       required: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    variantAttributes: [
+      {
+        name: { type: String, required: true },
+        values: { type: String, required: true },
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Product Variant Schema (each variant is a separate product)
+const ProductVariantSchema = new mongoose.Schema(
+  {
+    baseProductId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "BaseProduct",
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+    },
+    attributes: {
+      type: Object,
+      required: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
+    compareAtPrice: {
+      type: Number,
     },
     images: [
       {
@@ -57,31 +66,34 @@ const ProductSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        alt: {
+          type: String,
+        },
       },
     ],
-    basePrice: {
+    stock: {
       type: Number,
       required: true,
+      default: 0,
     },
-    variantAttributes: [
-      {
-        name: {
-          type: String,
-          required: true,
-        },
-        values: {
-          type: [String],
-          required: true,
-        },
-      },
-    ],
-    variants: [VariantSchema],
+    sku: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    weight: {
+      type: Number,
+    },
+    dimensions: {
+      length: { type: Number },
+      width: { type: Number },
+      height: { type: Number },
+    },
+    isDefault: { type: Boolean, default: false },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const PRODUCT = mongoose.model("Product", ProductSchema);
-
-export default PRODUCT;
+const BASE_PRODUCT = mongoose.model("BaseProduct", BaseProductSchema);
+const PRODUCT_VARIANT = mongoose.model("ProductVariant", ProductVariantSchema);
+export { BASE_PRODUCT, PRODUCT_VARIANT };

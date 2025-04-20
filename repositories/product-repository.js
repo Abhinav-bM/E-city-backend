@@ -1,4 +1,5 @@
 import { BASE_PRODUCT, PRODUCT_VARIANT } from "../models/product-model.js";
+import { WISHLIST } from "../models/wishlist-model.js";
 
 // Create base product
 const createBaseProduct = async (baseProductObj) => {
@@ -14,16 +15,18 @@ const createProductVariant = async (variantObj) => {
 // Get base product with all its variants
 const getBaseProductWithVariants = async (baseProductId) => {
   const baseProductDoc = await BASE_PRODUCT.findById(baseProductId);
+  // .lean();
   const variants = await PRODUCT_VARIANT.find({ baseProductId });
 
   const defaultVariant = variants.find((v) => v.isDefault);
+  // .lean();
 
   const basicDatas = {
     price: defaultVariant?.price || 0,
     images: defaultVariant?.images || [],
   };
 
-  const baseProduct = baseProductDoc.toObject(); // 🔥 This is the fix
+  const baseProduct = baseProductDoc.toObject();
 
   const product = {
     ...baseProduct,
@@ -35,13 +38,27 @@ const getBaseProductWithVariants = async (baseProductId) => {
 };
 
 // Ger all base products (for listing page)
-const getAllBaseProducts = async (filters = {}, page = 1, limit = 10) => {
+const getAllBaseProducts = async (
+  filters = {},
+  page = 1,
+  limit = 10,
+  userId = null
+) => {
   const skip = (page - 1) * limit;
 
   const baseProducts = await BASE_PRODUCT.find(filters)
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
+
+  // Fetching wishlisted product id's if user id is present
+  let wishlistedProductIds = [];
+  if (userId) {
+    const wishlistedItems = await WISHLIST.find({ userId });
+    wishlistedProductIds = wishlistedItems.map((item) =>
+      item.productId.toString()
+    );
+  }
 
   // Get default variant for each base product
   const productWithDefaultVariant = await Promise.all(
@@ -51,9 +68,14 @@ const getAllBaseProducts = async (filters = {}, page = 1, limit = 10) => {
         isDefault: true,
       });
 
+      const isWishlisted = userId
+        ? wishlistedProductIds.includes(baseProduct._id.toString())
+        : false;
+
       return {
         ...baseProduct.toObject(),
         defaultVariant: defaultVariant ? defaultVariant.toObject() : null,
+        is_wishlisted: isWishlisted,
       };
     })
   );
@@ -72,8 +94,16 @@ const getAllBaseProducts = async (filters = {}, page = 1, limit = 10) => {
 };
 
 // Get specific product variant
-const getProductVariant = async (variantId) => {
+const getVariantById = async (variantId) => {
   return await PRODUCT_VARIANT.findById(variantId);
+};
+
+// Get default variant by base product id
+const getDefaultVariant = async (baseProductId) => {
+  return await PRODUCT_VARIANT.findOne({
+    baseProductId,
+    isDefault: true,
+  });
 };
 
 // Get all variants for base product
@@ -100,8 +130,9 @@ export default {
   createProductVariant,
   getBaseProductWithVariants,
   getAllBaseProducts,
-  getProductVariant,
+  getVariantById,
   getVariantsByBaseProductId,
   updateBaseProduct,
   updateProductVariant,
+  getDefaultVariant,
 };

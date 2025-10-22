@@ -1,7 +1,13 @@
+import { REFUSED } from "dns";
 import cartService from "../services/cart-service.js";
 import ApiResponse from "../utils/api-response.js";
 
-export const addToCart = async (req, res) => {
+/**
+ *  required : function to get all cart product with image, price etc..
+ *             function to remove product from cart
+ */
+
+const addToCart = async (req, res) => {
   try {
     const { baseProductId, variantId, quantity } = req.body;
 
@@ -31,3 +37,5 @@ export const addToCart = async (req, res) => {
     return res.status(500).json(apiResponse);
   }
 };
+
+export { addToCart };

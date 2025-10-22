@@ -1,17 +1,45 @@
 import USER from "../models/user-model.js";
+import ApiResponse from "../utils/api-response.js";
 import { generateOTP, sendOtp, storeOtp } from "../utils/otp-helper.js";
 
-export const userLogin = async (req, res) => {
+// create a new user if not exist
+const createUser = async (phone) => {
+  try {
+  } catch (error) {}
+};
+
+// login with otp
+const userLogin = async (req, res) => {
   try {
     const { phone } = req.body;
+
+    if (!phone) {
+      res.status(400).json(
+        new ApiResponse({
+          message: "Phone number is required",
+          statusCode: 400,
+        })
+      );
+    }
+
     const user = await USER.findOne(phone);
 
     if (user) {
       const otp = generateOTP();
       storeOtp();
       await sendOtp(phone, otp);
+      res.status(200).json(
+        new ApiResponse({
+          message: "Otp send successfully",
+          statusCode: 200,
+        })
+      );
+    } else {
+      createUser(phone);
     }
   } catch (error) {
     console.error(error);
   }
 };
+
+export { userLogin };

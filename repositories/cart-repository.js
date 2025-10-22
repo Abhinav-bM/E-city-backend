@@ -1,4 +1,4 @@
-import CART from "../models/cartModel.js";
+import CART from "../models/cart-model.js";
 import { PRODUCT_VARIANT, BASE_PRODUCT } from "../models/product-model.js";
 
 const addOrUpdateCart = async (userId, productVariantId, quantity) => {

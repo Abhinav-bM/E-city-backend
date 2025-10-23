@@ -12,7 +12,7 @@ export const requireAuth = (req, res, next) => {
       return res.status(401).json({ message: "Missing access token" });
 
     const payload = verifyAccessToken(token); // throws on invalid/expired
-    req.user = payload; // e.g. { userId, email, iat, exp }
+    req.user = payload; 
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid or expired access token" });

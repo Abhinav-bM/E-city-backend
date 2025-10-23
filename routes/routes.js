@@ -9,8 +9,9 @@ import wishlistRouter from "./custom_routes/wishlist-route.js";
 export const routes = (app) => {
   const router = Router();
 
+  router.use("/auth", userRouter(router));
+
   router.use("/product", productRouter(router));
-  router.use("/user", userRouter(router));
   router.use("/cart", cartRouter(router));
   router.use("/wishlist", wishlistRouter(router));
 

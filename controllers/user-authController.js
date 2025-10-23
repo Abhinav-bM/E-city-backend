@@ -1,4 +1,4 @@
-import USER from "../models/user.ts";
+import USER from "../models/user.js";
 import ApiResponse from "../utils/api-response.js";
 import { generateOTP, sendOtp, storeOtp } from "../utils/otp-helper.js";
 

@@ -4,6 +4,7 @@ import {
   createAccessToken,
   createRefreshToken,
   verifyRefreshToken,
+  setRefreshTokenCookie,
 } from "../utils/token.js";
 
 const otpStore = new Map();
@@ -11,6 +12,7 @@ const otpStore = new Map();
 // login with otp
 export const sentOtp = async (req, res) => {
   try {
+    console.log("Request Body:", req.body); // Debugging line
     const { phone } = req.body;
     if (!phone)
       return res.status(400).json({ message: "Phone number required" });
@@ -53,16 +55,21 @@ export const verifyOtp = async (req, res) => {
 
     // if otp is valid generate jwt
     const user = await USER.findOne({ phone });
-    const accessToken = createAccessToken(user._id);
-    const refreshToken = createRefreshToken(user._id);
+    const accessToken = createAccessToken({ userId: user._id });
+    const refreshToken = createRefreshToken({ userId: user._id });
 
     otpStore.delete(phone); // remove used OTP
 
     setRefreshTokenCookie(res, refreshToken);
 
-    res.json({ accessToken, userId: user._id });
+    // After verifying OTP successfully
+    res.status(200).json({
+      message: "OTP verified successfully",
+      accessToken,
+      userId: user._id,
+    });
   } catch (error) {
-    console.error(err);
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };

@@ -1,4 +1,4 @@
-import USER from "../models/user-model.js";
+import USER from "../models/user.ts";
 import ApiResponse from "../utils/api-response.js";
 import { generateOTP, sendOtp, storeOtp } from "../utils/otp-helper.js";
 
@@ -10,9 +10,9 @@ const createUser = async (phone) => {
 
 // login with otp
 const userLogin = async (req, res) => {
+  console.log("called me")
   try {
     const { phone } = req.body;
-
     if (!phone) {
       res.status(400).json(
         new ApiResponse({
@@ -24,9 +24,10 @@ const userLogin = async (req, res) => {
 
     const user = await USER.findOne(phone);
 
+
     if (user) {
       const otp = generateOTP();
-      storeOtp();
+      storeOtp(user._id, otp);
       await sendOtp(phone, otp);
       res.status(200).json(
         new ApiResponse({

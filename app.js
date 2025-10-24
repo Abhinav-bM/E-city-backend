@@ -12,8 +12,14 @@ const app = express();
 
 // connect to MongoDB
 connectDB();
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    credentials: true,
+  })
+);
 app.use(cookieParser());
 app.use(
   session({

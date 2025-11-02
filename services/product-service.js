@@ -2,7 +2,7 @@ import productRepository from "../repositories/product-repository.js";
 
 const addProduct = async (productData) => {
   // Create the base product
-  const { name, brand, description, category, variantAttributes, variants } =
+  const { name, brand, description, category, variantAttributes, variants, images } =
     productData;
 
   const baseProductData = {
@@ -11,6 +11,7 @@ const addProduct = async (productData) => {
     description,
     category,
     variantAttributes,
+    images,
   };
 
   const baseProduct =

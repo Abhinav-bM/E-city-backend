@@ -28,7 +28,7 @@ const BaseProductSchema = new mongoose.Schema(
     variantAttributes: [
       {
         name: { type: String, required: true },
-        values: { type: String, required: true },
+        values: { type: [String], required: true },
       },
     ],
   },

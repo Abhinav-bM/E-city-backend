@@ -4,7 +4,7 @@ import productServices from "../services/product-service.js";
 const addProduct = async (req, res) => {
   try {
     const productData = req.body;
-    console.log(productData)
+    console.log(productData);
     const productDetails = await productServices.addProduct(productData);
     res.json({
       success: true,
@@ -29,7 +29,9 @@ const getProductDetails = async (req, res) => {
     const baseProductId = req.params.id;
     const productDetails =
       await productServices.getProductDetails(baseProductId);
-    console.log("Product details : ", productDetails);
+    return res.json({
+      data: productDetails,
+    });
   } catch (error) {
     console.error("Error while fetching product details: ", error);
   }

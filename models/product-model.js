@@ -25,6 +25,11 @@ const BaseProductSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    images: [
+      {
+        url: String,
+      },
+    ],
     variantAttributes: [
       {
         name: { type: String, required: true },

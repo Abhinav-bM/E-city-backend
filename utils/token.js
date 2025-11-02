@@ -23,7 +23,7 @@ export const setRefreshTokenCookie = (res, token) => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
     secure: isProd, // true on production (HTTPS)
-    sameSite: "lax", // prevent CSRF to some extent
+    sameSite: "strict", // prevent CSRF to some extent
     path: "/auth/refresh", // limit cookie to refresh endpoint if desired
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days (ms) — should match refresh token expiry
   });

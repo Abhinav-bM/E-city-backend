@@ -40,6 +40,21 @@ export const sentOtp = async (req, res) => {
 export const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
+
+    if (!phone || !/^\d{10}$/.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number",
+      });
+    }
+
+    if (!otp || !/^\d{6}$/.test(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP format",
+      });
+    }
+
     if (!phone || !otp)
       return res.status(400).json({ message: "Phone and OTP required" });
 
@@ -63,10 +78,18 @@ export const verifyOtp = async (req, res) => {
     setRefreshTokenCookie(res, refreshToken);
 
     // After verifying OTP successfully
-    res.status(200).json({
+    res.json({
+      success: true,
       message: "OTP verified successfully",
-      accessToken,
-      userId: user._id,
+      data: {
+        accessToken,
+        refreshToken, // Also return in body for flexibility
+        user: {
+          userId: user._id,
+          phone: user.phone,
+          name: user.name,
+        },
+      },
     });
   } catch (error) {
     console.error(error);
@@ -77,8 +100,12 @@ export const verifyOtp = async (req, res) => {
 export const refresh = async (req, res) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken)
-      return res.status(401).json({ message: "Missing refresh token" });
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: "No refresh token provided",
+      });
+    }
 
     let payload;
     try {
@@ -97,7 +124,11 @@ export const refresh = async (req, res) => {
     const newRefreshToken = createRefreshToken(newPayload);
 
     setRefreshTokenCookie(res, newRefreshToken);
-    res.json({ accessToken: newAccessToken });
+    res.json({
+      success: true,
+      data: { accessToken: newAccessToken, refreshToken: newRefreshToken },
+      message: "Refresh token refreshed successfully",
+    });
   } catch (error) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -109,9 +140,34 @@ export const logout = async (req, res) => {
     const refreshToken = req.cookies?.refreshToken;
 
     res.clearCookie("refreshToken", { path: "/auth/refresh" });
-    res.json({ message: "Logged out" });
+    res.json({ success: true, message: "Logged out successfully" });
   } catch (error) {
     console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getMe = async (req, res) => {
+  try {
+    const user = await USER.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    res.json({
+      success: true,
+      data: {
+        user: {
+          userId: user._id,
+          phone: user.phone,
+          name: user.name,
+        },
+      },
+    });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };

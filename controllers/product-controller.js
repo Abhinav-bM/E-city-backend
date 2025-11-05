@@ -23,17 +23,43 @@ const addProduct = async (req, res) => {
   }
 };
 
-// Get product details with variants
+// Get product details by variantId
+// Returns current variant details, base product info, and all available variants for switching
 const getProductDetails = async (req, res) => {
   try {
-    const baseProductId = req.params.id;
-    const productDetails =
-      await productServices.getProductDetails(baseProductId);
-    return res.json({
+    const variantId = req.params.id;
+    
+    // Validate variantId format (basic MongoDB ObjectId check)
+    if (!variantId || variantId.length !== 24) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid variant ID format",
+      });
+    }
+
+    const productDetails = await productServices.getProductDetails(variantId);
+    
+    return res.status(200).json({
+      success: true,
       data: productDetails,
+      message: "Product details retrieved successfully",
     });
   } catch (error) {
     console.error("Error while fetching product details: ", error);
+    
+    // Handle specific error cases
+    if (error.message === "Variant not found" || error.message === "Base product not found") {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Error while fetching product details",
+      error: error.message,
+    });
   }
 };
 
@@ -52,7 +78,7 @@ const getAllProducts = async (req, res) => {
       Number.parseInt(limit)
     );
 
-    res.json({
+    res.status(200).json({
       success: true,
       data: products,
       message: "Products retrieved successfully",

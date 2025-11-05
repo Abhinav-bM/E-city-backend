@@ -42,6 +42,11 @@ const BaseProductSchema = new mongoose.Schema(
   }
 );
 
+// Indexes to optimize common listing queries
+BaseProductSchema.index({ category: 1 });
+BaseProductSchema.index({ brand: 1 });
+BaseProductSchema.index({ isActive: 1 });
+
 // Product Variant Schema (each variant is a separate product)
 const ProductVariantSchema = new mongoose.Schema(
   {
@@ -98,6 +103,10 @@ const ProductVariantSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Indexes to speed up variant lookups by base product and default selection
+ProductVariantSchema.index({ baseProductId: 1 });
+ProductVariantSchema.index({ isDefault: 1 });
 
 const BASE_PRODUCT = mongoose.model("BaseProduct", BaseProductSchema);
 const PRODUCT_VARIANT = mongoose.model("ProductVariant", ProductVariantSchema);

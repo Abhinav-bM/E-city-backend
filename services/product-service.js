@@ -46,14 +46,15 @@ const addProduct = async (productData) => {
   return { baseProduct, variants: createdVariants };
 };
 
-// Get product details with all variants
-const getProductDetails = async (baseProductId) => {
-  return await productRepository.getBaseProductWithVariants(baseProductId);
+// Get product details by variantId
+// Returns the specific variant details plus all available variants for frontend switching
+const getProductDetails = async (variantId) => {
+  return await productRepository.getProductDetailsByVariantId(variantId);
 };
 
-// Get all products for listing
+// Get all products for listing (grouped by primary variant attribute)
 const getAllProducts = async (filters = {}, page = 1, limit = 10) => {
-  return await productRepository.getAllBaseProducts(filters, page, limit);
+  return await productRepository.getProductsGroupedByVariant(filters, page, limit);
 };
 
 export default {

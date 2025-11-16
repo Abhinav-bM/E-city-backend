@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { slugify } from "../utils/misc";
 
 //Base/parent Product schema
 const BaseProductSchema = new mongoose.Schema(
@@ -10,12 +11,12 @@ const BaseProductSchema = new mongoose.Schema(
     },
     brand: {
       type: String,
-      require: true,
+      required: true,
       trim: true,
     },
     description: {
       type: String,
-      require: true,
+      required: true,
     },
     category: {
       type: String,
@@ -105,16 +106,61 @@ const ProductVariantSchema = new mongoose.Schema(
     slug: {
       type: String,
       required: true,
-      unique : true
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
     isDefault: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
+// Generate slug from title and attributes to ensure uniqueness
+ProductVariantSchema.pre("save", async function (next) {
+  // Only generate slug if it's a new document or title/attributes have changed
+  if (this.isNew || this.isModified("title") || this.isModified("attributes")) {
+    // Build slug from title + variant attributes for uniqueness and SEO
+    let slugBase = slugify(this.title);
+
+    // Append variant attributes to make slug unique and descriptive
+    // e.g., "product-name-red-large" instead of just "product-name"
+    if (this.attributes && typeof this.attributes === "object") {
+      const attributeValues = Object.values(this.attributes)
+        .filter((val) => val) // Remove null/undefined values
+        .map((val) => slugify(String(val)))
+        .join("-");
+
+      if (attributeValues) {
+        slugBase = `${slugBase}-${attributeValues}`;
+      }
+    }
+
+    // Ensure uniqueness by checking database and appending number if needed
+    let finalSlug = slugBase;
+    let counter = 1;
+    const ProductVariant = this.constructor;
+
+    // Check if slug already exists (excluding current document if updating)
+    const query = { slug: finalSlug };
+    if (!this.isNew) {
+      query._id = { $ne: this._id };
+    }
+
+    while (await ProductVariant.findOne(query)) {
+      finalSlug = `${slugBase}-${counter}`;
+      query.slug = finalSlug;
+      counter++;
+    }
+
+    this.slug = finalSlug;
+  }
+  next();
+});
+
 // Indexes to speed up variant lookups by base product and default selection
 ProductVariantSchema.index({ baseProductId: 1 });
 ProductVariantSchema.index({ isDefault: 1 });
+ProductVariantSchema.index({ slug: 1 }); // Index for faster slug lookups
 
 const BASE_PRODUCT = mongoose.model("BaseProduct", BaseProductSchema);
 const PRODUCT_VARIANT = mongoose.model("ProductVariant", ProductVariantSchema);

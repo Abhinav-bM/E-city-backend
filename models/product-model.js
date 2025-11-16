@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { slugify } from "../utils/misc";
+import { slugify } from "../utils/misc.js";
 
 //Base/parent Product schema
 const BaseProductSchema = new mongoose.Schema(

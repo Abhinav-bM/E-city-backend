@@ -2,11 +2,18 @@ import productRepository from "../repositories/product-repository.js";
 
 const addProduct = async (productData) => {
   // Create the base product
-  const { name, brand, description, category, variantAttributes, variants, images } =
-    productData;
+  const {
+    name,
+    brand,
+    description,
+    category,
+    variantAttributes,
+    variants,
+    images,
+  } = productData;
 
   const baseProductData = {
-    name,
+    title: name,
     brand,
     description,
     category,
@@ -24,14 +31,16 @@ const addProduct = async (productData) => {
     const variant = variants[i];
 
     // Generate a title that includes the variant attributes
-    const attributesValues = Object.values(variant.attributes).join(" / ");
-    const variantTitle = `${name} - ${attributesValues}`;
+
+    // const attributesValues = Object.values(variant.attributes).join(" / ");
+    // const variantTitle = `${name}`;
 
     const variantData = {
       baseProductId: baseProduct._id,
-      title: variantTitle,
+      title: name,
       attributes: variant.attributes,
-      price: variant.price,
+      sellingPrice: variant.price,
+      actualPrice: productData?.actualPrice || 0,
       images: variant.images,
       stock: variant.stock,
       sku: variant.sku,
@@ -46,15 +55,19 @@ const addProduct = async (productData) => {
   return { baseProduct, variants: createdVariants };
 };
 
-// Get product details by variantId
+// Get product details by variantSlug
 // Returns the specific variant details plus all available variants for frontend switching
-const getProductDetails = async (variantId) => {
-  return await productRepository.getProductDetailsByVariantId(variantId);
+const getProductDetails = async (variantSlug) => {
+  return await productRepository.getProductDetailsByVariantSlug(variantSlug);
 };
 
 // Get all products for listing (grouped by primary variant attribute)
 const getAllProducts = async (filters = {}, page = 1, limit = 10) => {
-  return await productRepository.getProductsGroupedByVariant(filters, page, limit);
+  return await productRepository.getProductsGroupedByVariant(
+    filters,
+    page,
+    limit
+  );
 };
 
 export default {

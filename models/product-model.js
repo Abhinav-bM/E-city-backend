@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 //Base/parent Product schema
 const BaseProductSchema = new mongoose.Schema(
   {
-    name: {
+    title: {
       type: String,
       required: true,
       trim: true,
@@ -63,9 +63,12 @@ const ProductVariantSchema = new mongoose.Schema(
       type: Object,
       required: true,
     },
-    price: {
+    sellingPrice: {
       type: Number,
       required: true,
+    },
+    actualPrice: {
+      type: Number,
     },
     compareAtPrice: {
       type: Number,
@@ -98,6 +101,11 @@ const ProductVariantSchema = new mongoose.Schema(
       length: { type: Number },
       width: { type: Number },
       height: { type: Number },
+    },
+    slug: {
+      type: String,
+      required: true,
+      unique : true
     },
     isDefault: { type: Boolean, default: false },
   },

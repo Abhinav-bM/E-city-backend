@@ -41,13 +41,15 @@ const getBaseProductWithVariants = async (baseProductId) => {
   return product;
 };
 
-// Get product details by variantId - returns specific variant with all available variants for switching
+// Get product details by variantSlug - returns specific variant with all available variants for switching
 // This is optimized for frontend variant management (e.g., color/size selectors)
-const getProductDetailsByVariantId = async (variantId) => {
-  // Step 1: Find the specific variant by ID
+const getProductDetailsByVariantSlug = async (variantSlug) => {
+  // Find the specific variant by slug
   // This will tell us which base product it belongs to
-  const currentVariant = await PRODUCT_VARIANT.findById(variantId).lean();
-  
+  const currentVariant = await PRODUCT_VARIANT.findOne({
+    slug: variantSlug,
+  }).lean();
+
   // If variant doesn't exist, throw error
   if (!currentVariant) {
     throw new Error("Variant not found");
@@ -70,10 +72,13 @@ const getProductDetailsByVariantId = async (variantId) => {
   // Step 4: Determine primary attribute for grouping (same logic as getProductsGroupedByVariant)
   // This helps frontend understand which attribute to use for variant selection UI
   const getPrimaryAttributeKey = (baseProduct) => {
-    if (!baseProduct?.variantAttributes || baseProduct.variantAttributes.length === 0) {
+    if (
+      !baseProduct?.variantAttributes ||
+      baseProduct.variantAttributes.length === 0
+    ) {
       return null;
     }
-    
+
     // Priority: Color first, then first attribute
     const colorAttr = baseProduct.variantAttributes.find(
       (attr) => attr.name?.toLowerCase() === "color"
@@ -81,7 +86,7 @@ const getProductDetailsByVariantId = async (variantId) => {
     if (colorAttr) {
       return colorAttr.name;
     }
-    
+
     return baseProduct.variantAttributes[0]?.name || null;
   };
 
@@ -89,22 +94,25 @@ const getProductDetailsByVariantId = async (variantId) => {
 
   // Step 5: Determine which images to use for current variant
   // Priority: variant images if available, otherwise base product images
-  const variantImages = currentVariant.images && currentVariant.images.length > 0 
-    ? currentVariant.images 
-    : (baseProductDoc?.images || []);
+  const variantImages =
+    currentVariant.images && currentVariant.images.length > 0
+      ? currentVariant.images
+      : baseProductDoc?.images || [];
 
   // Step 6: Build variant options map for easy frontend switching
   // Groups variants by their attribute combinations for easy selection
   const variantOptions = allVariants.map((variant) => ({
     variantId: variant._id,
     attributes: variant.attributes,
-    price: variant.price,
+    price: variant.sellingPrice,
     compareAtPrice: variant.compareAtPrice,
     stock: variant.stock,
     sku: variant.sku,
-    images: variant.images && variant.images.length > 0 
-      ? variant.images 
-      : (baseProductDoc?.images || []),
+    slug: variant.slug,
+    images:
+      variant.images && variant.images.length > 0
+        ? variant.images
+        : baseProductDoc?.images || [],
     isAvailable: variant.stock > 0,
     isDefault: variant.isDefault,
   }));
@@ -116,10 +124,11 @@ const getProductDetailsByVariantId = async (variantId) => {
       variantId: currentVariant._id,
       title: currentVariant.title,
       attributes: currentVariant.attributes,
-      price: currentVariant.price,
+      price: currentVariant.sellingPrice,
       compareAtPrice: currentVariant.compareAtPrice,
       stock: currentVariant.stock,
       sku: currentVariant.sku,
+      slug: currentVariant.slug,
       weight: currentVariant.weight,
       dimensions: currentVariant.dimensions,
       images: variantImages,
@@ -130,7 +139,7 @@ const getProductDetailsByVariantId = async (variantId) => {
     // Base product information (shared across all variants)
     baseProduct: {
       baseProductId: baseProductDoc._id,
-      name: baseProductDoc.name,
+      name: baseProductDoc.title,
       brand: baseProductDoc.brand,
       description: baseProductDoc.description,
       category: baseProductDoc.category,
@@ -151,9 +160,11 @@ const getProductDetailsByVariantId = async (variantId) => {
   };
 };
 
-// Get all products grouped by primary variant attribute (e.g., Color)
-// Returns one product per unique primary attribute value (e.g., one per color)
-// Uses variant images if available, otherwise falls back to base product images
+/*
+ * Get all products grouped by primary variant attribute (e.g., Color)
+ * Returns one product per unique primary attribute value (e.g., one per color)
+ * Uses variant images if available, otherwise falls back to base product images
+ */
 const getProductsGroupedByVariant = async (
   filters = {},
   page = 1,
@@ -164,17 +175,17 @@ const getProductsGroupedByVariant = async (
   // Calculate how many items to skip for pagination (e.g., page 2 with limit 10 = skip 10)
   const skip = (page - 1) * limit;
 
-  // Step 1: Find all base products matching the provided filters (category, brand, etc.)
+  // Find all base products matching the provided filters (category, brand, etc.)
   // .lean() returns plain JavaScript objects instead of Mongoose documents for better performance
   // .select() only fetches the fields we need, reducing data transfer
   const baseProductDocs = await BASE_PRODUCT.find(filters)
-    .select("_id name brand description category images createdAt variantAttributes")
+    .select("_id name brand description category images variantAttributes")
     .lean();
-  
+
   // Extract just the IDs from base products to use in subsequent queries
   const baseProductIdList = baseProductDocs.map((b) => b._id);
 
-  // Early return if no base products match the filters (saves unnecessary database queries)
+  // Return if no base products match the filters (saves unnecessary database queries)
   if (baseProductIdList.length === 0) {
     return {
       products: [],
@@ -182,8 +193,7 @@ const getProductsGroupedByVariant = async (
     };
   }
 
-  // Step 2: Get wishlist product IDs for quick lookup (to mark products as wishlisted)
-  // This is optional - only runs if userId is provided
+  // Get wishlist product IDs for lookup (to mark products as wishlisted)
   let wishlistedProductIds = [];
   if (userId) {
     // Find all wishlist entries where the productId matches any of our base products
@@ -193,21 +203,20 @@ const getProductsGroupedByVariant = async (
     })
       .select("productId") // Only select productId field
       .lean();
-    
+
     // Convert to array of strings for easy comparison later
     wishlistedProductIds = wishlistedItems.map((item) =>
       item.productId.toString()
     );
   }
 
-  // Step 3: Fetch ALL variants for the matching base products (not paginated yet)
+  // Fetch ALL variants for the matching base products (not paginated yet)
   // We need all variants to group them properly
   const variantQuery = {
     baseProductId: { $in: baseProductIdList }, // Match any base product in our list
     ...(options.variantFilters || {}), // Merge any additional variant filters from options
   };
-  console.log("variant query  :", variantQuery);
-  
+
   // Determine sort order (default: newest first)
   const sortOption = options.sort || { createdAt: -1 };
 
@@ -216,22 +225,23 @@ const getProductsGroupedByVariant = async (
     .sort(sortOption)
     .lean();
 
-  // Step 4: Build a lookup map for base product fields
+  // Build a lookup map for base product fields
   // Map allows O(1) lookup time instead of O(n) array search
   // Key: base product ID as string, Value: base product object
-  const baseById = new Map(
-    baseProductDocs.map((b) => [b._id.toString(), b])
-  );
+  const baseById = new Map(baseProductDocs.map((b) => [b._id.toString(), b]));
 
-  // Step 5: Determine the primary attribute for grouping (e.g., "Color")
+  // Determine the primary attribute for grouping (e.g., "Color")
   // This is the attribute we'll use to group variants (e.g., group by color value)
   // Priority: 1) "Color" or "color" (case-insensitive), 2) First attribute in variantAttributes
   const getPrimaryAttributeKey = (baseProduct) => {
     // Check if base product has variantAttributes defined
-    if (!baseProduct?.variantAttributes || baseProduct.variantAttributes.length === 0) {
+    if (
+      !baseProduct?.variantAttributes ||
+      baseProduct.variantAttributes.length === 0
+    ) {
       return null;
     }
-    
+
     // First, try to find "Color" or "color" (case-insensitive)
     const colorAttr = baseProduct.variantAttributes.find(
       (attr) => attr.name?.toLowerCase() === "color"
@@ -239,12 +249,12 @@ const getProductsGroupedByVariant = async (
     if (colorAttr) {
       return colorAttr.name; // Return the actual name (preserves casing)
     }
-    
+
     // If no color attribute, use the first attribute as primary
     return baseProduct.variantAttributes[0]?.name || null;
   };
 
-  // Step 6: Group variants by baseProductId + primaryAttributeValue
+  // Group variants by baseProductId + primaryAttributeValue
   // This creates a Map where:
   // Key: "baseProductId_primaryAttributeValue" (e.g., "123_Red")
   // Value: Array of variants with that baseProductId and primary attribute value
@@ -257,7 +267,7 @@ const getProductsGroupedByVariant = async (
 
     // Determine which attribute to use for grouping
     const primaryAttrKey = getPrimaryAttributeKey(base);
-    
+
     // Get the value of the primary attribute from this variant
     // variant.attributes is an object like { Color: "Red", Size: "M" }
     let groupKey;
@@ -281,7 +291,7 @@ const getProductsGroupedByVariant = async (
     });
   });
 
-  // Step 7: Select the best variant from each group
+  // Select the best variant from each group
   // For each group, we want to pick one "representative" variant
   // Priority: 1) Default variant, 2) First variant in the group
   const groupedProducts = Array.from(variantGroups.values()).map((group) => {
@@ -296,12 +306,13 @@ const getProductsGroupedByVariant = async (
 
     // Pick the first (best) variant from the sorted group
     const { variant, base, primaryAttrKey } = group[0];
-    
+
     // Determine which images to use
     // Priority: variant images if they exist and are not empty, otherwise base product images
-    const variantImages = variant.images && variant.images.length > 0 
-      ? variant.images 
-      : (base?.images || []);
+    const variantImages =
+      variant.images && variant.images.length > 0
+        ? variant.images
+        : base?.images || [];
 
     // Check if this base product is wishlisted
     const isWishlisted = userId
@@ -311,35 +322,37 @@ const getProductsGroupedByVariant = async (
     // Return the product object with merged base and variant data
     return {
       // Base product fields (shared across all variants)
-      baseProductId: variant.baseProductId,
-      name: base?.name,
-      brand: base?.brand,
-      description: base?.description,
-      category: base?.category,
-      baseCreatedAt: base?.createdAt,
+      // baseProductId: variant.baseProductId,
+      // name: base?.name,
+      // brand: base?.brand,
+      // description: base?.description,
+      // category: base?.category,
+      // baseCreatedAt: base?.createdAt,
 
       // Variant-specific fields (from the selected representative variant)
-      variantId: variant._id,
+      // variantId: variant._id,
       title: variant.title,
       attributes: variant.attributes,
-      price: variant.price,
-      compareAtPrice: variant.compareAtPrice,
+      sellingPrice: variant.sellingPrice,
+      actualPrice: variant?.actualPrice || 0,
+      slug: variant?.slug,
+      // compareAtPrice: variant.compareAtPrice,
       // Use variant images if available, otherwise fall back to base images
       images: variantImages,
       stock: variant.stock,
-      sku: variant.sku,
-      weight: variant.weight,
-      dimensions: variant.dimensions,
-      isDefault: variant.isDefault,
+      // sku: variant.sku,
+      // weight: variant.weight,
+      // dimensions: variant.dimensions,
+      // isDefault: variant.isDefault,
 
       // Additional metadata
-      primaryAttributeKey: primaryAttrKey, // Which attribute was used for grouping
-      variantCountInGroup: group.length, // How many variants share this primary attribute value
-      is_wishlisted: isWishlisted,
+      // primaryAttributeKey: primaryAttrKey, // Which attribute was used for grouping
+      // variantCountInGroup: group.length, // How many variants share this primary attribute value
+      // is_wishlisted: isWishlisted,
     };
   });
 
-  // Step 8: Apply pagination to the grouped results
+  // Apply pagination to the grouped results
   // Now that we have grouped products, we can paginate them
   const totalGroupedProducts = groupedProducts.length;
   const paginatedProducts = groupedProducts.slice(skip, skip + limit);
@@ -355,47 +368,10 @@ const getProductsGroupedByVariant = async (
   };
 };
 
-// Get specific product variant
-const getVariantById = async (variantId) => {
-  return await PRODUCT_VARIANT.findById(variantId);
-};
-
-// Get default variant by base product id
-const getDefaultVariant = async (baseProductId) => {
-  return await PRODUCT_VARIANT.findOne({
-    baseProductId,
-    isDefault: true,
-  });
-};
-
-// Get all variants for base product
-const getVariantsByBaseProductId = async (baseProductId) => {
-  return await PRODUCT_VARIANT.find({ baseProductId });
-};
-
-// Update base product
-const updateBaseProduct = async (baseProductId, updateData) => {
-  return await BASE_PRODUCT.findByIdAndUpdate(baseProductId, updateData, {
-    new: true,
-  });
-};
-
-// Update product variant
-const updateProductVariant = async (variantId, updateData) => {
-  return await PRODUCT_VARIANT.findByIdAndUpdate(variantId, updateData, {
-    new: true,
-  });
-};
-
 export default {
   createBaseProduct,
   createProductVariant,
   getBaseProductWithVariants,
-  getProductDetailsByVariantId,
+  getProductDetailsByVariantSlug,
   getProductsGroupedByVariant,
-  getVariantById,
-  getVariantsByBaseProductId,
-  updateBaseProduct,
-  updateProductVariant,
-  getDefaultVariant,
 };

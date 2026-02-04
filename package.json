@@ -29,9 +29,11 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "ioredis": "^5.6.0",
+    "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.11.0",
     "mongoose": "^8.19.2",
+    "morgan": "^1.10.1",
     "redis": "^4.7.0",
     "springedge": "^1.0.6"
   }

@@ -1,100 +1,69 @@
 import productServices from "../services/product-service.js";
+import { sendResponse, sendError } from "../utils/response-handler.js";
+import { asyncHandler } from "../utils/async-handler.js";
 
 // Create product with variants
-const addProduct = async (req, res) => {
-  try {
-    const productData = req.body;
-    console.log(productData);
-    const productDetails = await productServices.addProduct(productData);
-    res.json({
-      success: true,
-      data: {
-        productDetails,
-      },
-      message: "Product added successfully",
-    });
-  } catch (error) {
-    console.error("Error while creating product: ", error);
-    res.status(500).json({
-      success: false,
-      message: "Error while creating product",
-      error: error.message,
-    });
-  }
-};
+const addProduct = asyncHandler(async (req, res) => {
+  const productData = req.body;
+  console.log(productData);
+  const productDetails = await productServices.addProduct(productData);
+  return sendResponse(res, 201, true, "Product added successfully", {
+    productDetails,
+  });
+});
 
 // Get product details by variantSlug
 // Returns current variant details, base product info, and all available variants for switching
-const getProductDetails = async (req, res) => {
+const getProductDetails = asyncHandler(async (req, res) => {
+  const variantSlug = req.params.slug;
+
+  // Validate slug format
+  if (!variantSlug || variantSlug.trim().length === 0) {
+    return sendError(res, 400, "Invalid variant slug format");
+  }
+
   try {
-    const variantSlug = req.params.slug;
-
-    // Validate slug format
-    if (!variantSlug || variantSlug.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid variant slug format",
-      });
-    }
-
     const productDetails = await productServices.getProductDetails(variantSlug);
-
-    return res.status(200).json({
-      success: true,
-      data: productDetails,
-      message: "Product details retrieved successfully",
-    });
+    return sendResponse(
+      res,
+      200,
+      true,
+      "Product details retrieved successfully",
+      productDetails,
+    );
   } catch (error) {
-    console.error("Error while fetching product details: ", error);
-
-    // Handle specific error cases
+    // Handle specific error cases manually if needed, or let global handler catch generic ones
     if (
       error.message === "Variant not found" ||
       error.message === "Base product not found"
     ) {
-      return res.status(404).json({
-        success: false,
-        message: error.message,
-      });
+      return sendError(res, 404, error.message);
     }
-
-    return res.status(500).json({
-      success: false,
-      message: "Error while fetching product details",
-      error: error.message,
-    });
+    throw error; // Re-throw to global handler
   }
-};
+});
 
 // Get all products for listing
-const getAllProducts = async (req, res) => {
-  try {
-    const { page = 1, limit = 10, category, brand } = req.query;
+const getAllProducts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, category, brand } = req.query;
 
-    const filters = {};
-    if (category) filters.category = category;
-    if (brand) filters.brand = brand;
+  const filters = {};
+  if (category) filters.category = category;
+  if (brand) filters.brand = brand;
 
-    const products = await productServices.getAllProducts(
-      filters,
-      Number.parseInt(page),
-      Number.parseInt(limit)
-    );
+  const products = await productServices.getAllProducts(
+    filters,
+    Number.parseInt(page),
+    Number.parseInt(limit),
+  );
 
-    res.status(200).json({
-      success: true,
-      data: products,
-      message: "Products retrieved successfully",
-    });
-  } catch (error) {
-    console.error("Error while fetching products: ", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Error while fetching products",
-      error: error.message,
-    });
-  }
-};
+  return sendResponse(
+    res,
+    200,
+    true,
+    "Products retrieved successfully",
+    products,
+  );
+});
 
 export { addProduct, getProductDetails, getAllProducts };

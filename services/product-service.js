@@ -12,6 +12,67 @@ const addProduct = async (productData) => {
     images,
   } = productData;
 
+  // --- VALIDATION START ---
+  // Ensure all variants strictly adhere to the base product's attribute definitions
+  if (variants && variants.length > 0) {
+    const attributeNames = variantAttributes.map((attr) => attr.name);
+    const seenCombinations = new Set();
+
+    variants.forEach((variant) => {
+      // 1. Check for missing or extra attributes
+      const variantKeys = Object.keys(variant.attributes);
+
+      // Check if all required attributes are present
+      const missingAttributes = attributeNames.filter(
+        (name) => !variantKeys.includes(name),
+      );
+      if (missingAttributes.length > 0) {
+        throw new Error(
+          `Variant missing required attributes: ${missingAttributes.join(", ")}`,
+        );
+      }
+
+      // Check if there are any undefined attributes
+      const extraAttributes = variantKeys.filter(
+        (key) => !attributeNames.includes(key),
+      );
+      if (extraAttributes.length > 0) {
+        throw new Error(
+          `Variant contains undefined attributes: ${extraAttributes.join(", ")}`,
+        );
+      }
+
+      // 2. Duplicate Check
+      // A unique variant is defined by its Attributes + Condition + ConditionDescription (if unique item)
+      // For general uniqueness check to prevent accidental duplicates:
+      const conditionKey = variant.condition || "New";
+
+      // If it's a unique used item (e.g. specific scratch), we assume the frontend sends a unique conditionDescription or handled by user intent.
+      // However, we must ensure we don't have exact same attributes + condition + description overlap if intended to be unique.
+      // For simplicity and safety: Check uniqueness based on Attributes + Condition + ConditionDescription
+
+      const uniqueKeyParts = [
+        ...Object.entries(variant.attributes)
+          .sort(([k1], [k2]) => k1.localeCompare(k2)) // Sort keys for consistent stringify
+          .map(([k, v]) => `${k}:${v}`),
+        `Condition:${conditionKey}`,
+        `Desc:${variant.conditionDescription || ""}`, // Include description in uniqueness to allow "Scratch Top" vs "Scratch Bottom"
+      ];
+
+      const uniqueKey = uniqueKeyParts.join("|");
+
+      if (seenCombinations.has(uniqueKey)) {
+        throw new Error(
+          `Duplicate variant detected: ${JSON.stringify(
+            variant.attributes,
+          )} with condition ${conditionKey} and description "${variant.conditionDescription || ""}"`,
+        );
+      }
+      seenCombinations.add(uniqueKey);
+    });
+  }
+  // --- VALIDATION END ---
+
   const baseProductData = {
     title: name,
     brand,
@@ -30,10 +91,8 @@ const addProduct = async (productData) => {
   for (let i = 0; i < variants.length; i++) {
     const variant = variants[i];
 
-    // Generate a title that includes the variant attributes
-
-    // const attributesValues = Object.values(variant.attributes).join(" / ");
-    // const variantTitle = `${name}`;
+    // Default to "New" if not specified
+    const condition = variant.condition || "New";
 
     const variantData = {
       baseProductId: baseProduct._id,
@@ -44,7 +103,13 @@ const addProduct = async (productData) => {
       images: variant.images,
       stock: variant.stock,
       sku: variant.sku,
-      isDefault: i === 0, // Setting the frist variant as default one
+      isDefault: i === 0, // Setting the first variant as default one
+
+      // New Fields Mapping
+      condition: condition,
+      conditionDescription: variant.conditionDescription,
+      warranty: variant.warranty,
+      metadata: variant.metadata,
     };
 
     const createdVariant =
@@ -66,7 +131,7 @@ const getAllProducts = async (filters = {}, page = 1, limit = 10) => {
   return await productRepository.getProductsGroupedByVariant(
     filters,
     page,
-    limit
+    limit,
   );
 };
 

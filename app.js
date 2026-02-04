@@ -8,13 +8,15 @@ import { routes } from "./routes/routes.js";
 
 dotenv.config();
 
+import morgan from "morgan";
+
 const app = express();
+app.use(morgan("dev"));
 
 // connect to MongoDB
 connectDB();
 const FRONTEND_URL_USER = process.env.FRONTEND_URL;
 const FRONTEND_URL_ADMIN = process.env.FRONTEND_URL_ADMIN;
-
 
 app.use(
   cors({
@@ -22,7 +24,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
+  }),
 );
 app.use(cookieParser());
 app.use(
@@ -31,14 +33,19 @@ app.use(
     resave: false,
     saveUninitialized: true,
     cookie: { secure: false }, // Set to true for https only
-  })
+  }),
 );
 //same use of body parser. its built in express itself.
 app.use(express.urlencoded({ extended: false }));
 // for parsing json to js object.
 app.use(express.json());
 
+import { errorMiddleware } from "./middlewares/error-middleware.js";
+
 routes(app);
+
+// Global Error Handler (Must be last)
+app.use(errorMiddleware);
 
 // starting server
 const port = process.env.PORT || 3000;

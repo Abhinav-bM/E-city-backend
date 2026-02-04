@@ -30,8 +30,8 @@ export const sendOtp = (mobileNumber, OTP) => {
   });
 };
 
-export const storeOtp = (user_id, otp) => {
-  redis.set(`otp${user_id}`, otp, "EX", 300);
+export const storeOtp = async (user_id, otp) => {
+  await redis.set(`otp:${user_id}`, otp, { EX: 300 });
 };
 
 export const verifyOtp = async (user_id, otp) => {

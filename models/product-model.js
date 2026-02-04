@@ -40,7 +40,7 @@ const BaseProductSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Indexes to optimize common listing queries
@@ -105,14 +105,29 @@ const ProductVariantSchema = new mongoose.Schema(
     },
     slug: {
       type: String,
-      required: true,
       unique: true,
       lowercase: true,
       trim: true,
     },
     isDefault: { type: Boolean, default: false },
+    condition: {
+      type: String,
+      enum: ["New", "Open Box", "Refurbished", "Used"],
+      default: "New",
+      required: true,
+    },
+    conditionDescription: {
+      type: String, // e.g., "Minor scratch on screen", "Original box missing"
+    },
+    warranty: {
+      type: String, // e.g., "1 Year Manufacturer", "30 Days Store Warranty"
+    },
+    metadata: {
+      type: Map,
+      of: String, // Flexible key-value store for future-proofing
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Generate slug from title and attributes to ensure uniqueness
@@ -160,7 +175,8 @@ ProductVariantSchema.pre("save", async function (next) {
 // Indexes to speed up variant lookups by base product and default selection
 ProductVariantSchema.index({ baseProductId: 1 });
 ProductVariantSchema.index({ isDefault: 1 });
-ProductVariantSchema.index({ slug: 1 }); // Index for faster slug lookups
+// ProductVariantSchema.index({ slug: 1 }); // Removed duplicate index
+ProductVariantSchema.index({ condition: 1 }); // Index for filtering by condition/grade
 
 const BASE_PRODUCT = mongoose.model("BaseProduct", BaseProductSchema);
 const PRODUCT_VARIANT = mongoose.model("ProductVariant", ProductVariantSchema);

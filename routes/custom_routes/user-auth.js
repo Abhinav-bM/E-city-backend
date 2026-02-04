@@ -6,11 +6,17 @@ import {
   getMe,
 } from "../../controllers/user-authController.js";
 
+import { validateRequest } from "../../middlewares/validation-middleware.js";
+import {
+  sendOtpSchema,
+  verifyOtpSchema,
+} from "../../utils/validation-schemas.js";
+
 const userRouter = (router) => {
   router.get("/me", getMe);
 
-  router.post("/sent-otp", sentOtp);
-  router.post("/verify-otp", verifyOtp);
+  router.post("/sent-otp", validateRequest(sendOtpSchema), sentOtp);
+  router.post("/verify-otp", validateRequest(verifyOtpSchema), verifyOtp);
   router.post("/refresh", refresh);
   router.post("/logout", logout);
   return router;

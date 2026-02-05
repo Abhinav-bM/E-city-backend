@@ -81,7 +81,7 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
 
     // Priority: Color first, then first attribute
     const colorAttr = baseProduct.variantAttributes.find(
-      (attr) => attr.name?.toLowerCase() === "color"
+      (attr) => attr.name?.toLowerCase() === "color",
     );
     if (colorAttr) {
       return colorAttr.name;
@@ -170,7 +170,7 @@ const getProductsGroupedByVariant = async (
   page = 1,
   limit = 10,
   userId = null,
-  options = {}
+  options = {},
 ) => {
   // Calculate how many items to skip for pagination (e.g., page 2 with limit 10 = skip 10)
   const skip = (page - 1) * limit;
@@ -206,7 +206,7 @@ const getProductsGroupedByVariant = async (
 
     // Convert to array of strings for easy comparison later
     wishlistedProductIds = wishlistedItems.map((item) =>
-      item.productId.toString()
+      item.productId.toString(),
     );
   }
 
@@ -244,7 +244,7 @@ const getProductsGroupedByVariant = async (
 
     // First, try to find "Color" or "color" (case-insensitive)
     const colorAttr = baseProduct.variantAttributes.find(
-      (attr) => attr.name?.toLowerCase() === "color"
+      (attr) => attr.name?.toLowerCase() === "color",
     );
     if (colorAttr) {
       return colorAttr.name; // Return the actual name (preserves casing)
@@ -349,6 +349,7 @@ const getProductsGroupedByVariant = async (
       // primaryAttributeKey: primaryAttrKey, // Which attribute was used for grouping
       // variantCountInGroup: group.length, // How many variants share this primary attribute value
       // is_wishlisted: isWishlisted,
+      isActive: base?.isActive, // Ensure soft-delete status is visible to admin
     };
   });
 
@@ -366,6 +367,28 @@ const getProductsGroupedByVariant = async (
       pages: Math.ceil(totalGroupedProducts / limit), // Calculate total pages
     },
   };
+}; // Soft delete product (toggle isActive)
+const softDeleteProduct = async (id) => {
+  // We should toggle both BaseProduct and its variants?
+  // Or just BaseProduct? If BaseProduct is inactive, variants should be hidden.
+  // Let's toggle BaseProduct.
+
+  const baseProduct = await BASE_PRODUCT.findById(id);
+  if (!baseProduct) {
+    throw new Error("Product not found");
+  }
+
+  const newStatus = !baseProduct.isActive;
+  baseProduct.isActive = newStatus;
+  await baseProduct.save();
+
+  // Optionally toggle all variants too to be safe/consistent
+  await PRODUCT_VARIANT.updateMany(
+    { baseProductId: id },
+    { $set: { isActive: newStatus } }, // Note: Variant schema needs this field if we want to query variants directly
+  );
+
+  return { _id: id, isActive: newStatus };
 };
 
 export default {
@@ -374,4 +397,5 @@ export default {
   getBaseProductWithVariants,
   getProductDetailsByVariantSlug,
   getProductsGroupedByVariant,
+  softDeleteProduct,
 };

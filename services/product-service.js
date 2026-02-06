@@ -99,7 +99,10 @@ const addProduct = async (productData) => {
       title: name,
       attributes: variant.attributes,
       sellingPrice: variant.price,
-      actualPrice: productData?.actualPrice || 0,
+      // Map pricing fields from variant level, falling back to product level or 0
+      actualPrice: variant.actualPrice || productData?.actualPrice || 0,
+      compareAtPrice:
+        variant.compareAtPrice || productData?.compareAtPrice || 0,
       images: variant.images,
       stock: variant.stock,
       sku: variant.sku,
@@ -135,8 +138,14 @@ const getAllProducts = async (filters = {}, page = 1, limit = 10) => {
   );
 };
 
+// Soft delete product
+const deleteProduct = async (id) => {
+  return await productRepository.softDeleteProduct(id);
+};
+
 export default {
   addProduct,
   getProductDetails,
   getAllProducts,
+  deleteProduct,
 };

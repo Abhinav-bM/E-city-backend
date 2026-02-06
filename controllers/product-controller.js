@@ -66,4 +66,19 @@ const getAllProducts = asyncHandler(async (req, res) => {
   );
 });
 
-export { addProduct, getProductDetails, getAllProducts };
+// Soft Delete Product
+const deleteProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const result = await productServices.deleteProduct(id);
+
+  return sendResponse(
+    res,
+    200,
+    true,
+    `Product ${result.isActive ? "activated" : "deactivated"} successfully`,
+    result,
+  );
+});
+
+export { addProduct, getProductDetails, getAllProducts, deleteProduct };

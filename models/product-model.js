@@ -89,6 +89,14 @@ const ProductVariantSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 0,
+      // NOTE: For 'Unique' items, this should be a cached count of 'Available' InventoryUnits
+    },
+    // How do we track stock for this variant?
+    inventoryType: {
+      type: String,
+      enum: ["Quantity", "Unique"], // Quantity = Standard (New), Unique = Serial/IMEI based
+      default: "Quantity",
+      required: true,
     },
     sku: {
       type: String,

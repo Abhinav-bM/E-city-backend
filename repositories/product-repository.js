@@ -1,5 +1,8 @@
 import { BASE_PRODUCT, PRODUCT_VARIANT } from "../models/product-model.js";
 import { WISHLIST } from "../models/wishlist-model.js";
+import INVENTORY_UNIT from "../models/inventory-model.js";
+import { Category } from "../models/category-model.js";
+import mongoose from "mongoose";
 
 // Create base product
 const createBaseProduct = async (baseProductObj) => {
@@ -50,9 +53,22 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
     slug: variantSlug,
   }).lean();
 
-  // If variant doesn't exist, throw error
   if (!currentVariant) {
     throw new Error("Variant not found");
+  }
+
+  // Enriched variant with inventory data if Unique
+  if (currentVariant.inventoryType === "Unique") {
+    const inventoryUnit = await INVENTORY_UNIT.findOne({
+      productVariantId: currentVariant._id,
+    }).lean();
+
+    if (inventoryUnit) {
+      currentVariant.imei = inventoryUnit.imei;
+      currentVariant.serialNumber = inventoryUnit.serialNumber;
+      currentVariant.conditionGrade = inventoryUnit.conditionGrade;
+      currentVariant.conditionDescription = inventoryUnit.conditionDescription;
+    }
   }
 
   // Step 2: Get the base product ID from the variant
@@ -60,13 +76,29 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
 
   // Step 3: Fetch the base product and all its variants in parallel for better performance
   const [baseProductDoc, allVariants] = await Promise.all([
-    BASE_PRODUCT.findById(baseProductId).lean(),
+    BASE_PRODUCT.findById(baseProductId)
+      .populate({ path: "category", select: "name", strictPopulate: false })
+      .lean(),
     PRODUCT_VARIANT.find({ baseProductId }).lean(),
   ]);
 
   // If base product doesn't exist, throw error
   if (!baseProductDoc) {
     throw new Error("Base product not found");
+  }
+
+  // Manually fetch category if populate failed (likely due to Mixed type schema)
+  if (
+    baseProductDoc.category &&
+    (typeof baseProductDoc.category === "string" ||
+      baseProductDoc.category instanceof mongoose.Types.ObjectId)
+  ) {
+    const categoryData = await Category.findById(baseProductDoc.category)
+      .select("name")
+      .lean();
+    if (categoryData) {
+      baseProductDoc.category = categoryData;
+    }
   }
 
   // Step 4: Determine primary attribute for grouping (same logic as getProductsGroupedByVariant)
@@ -133,7 +165,14 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
       dimensions: currentVariant.dimensions,
       images: variantImages,
       isDefault: currentVariant.isDefault,
+      isDefault: currentVariant.isDefault,
       isAvailable: currentVariant.stock > 0,
+      inventoryType: currentVariant.inventoryType,
+      condition: currentVariant.condition,
+      imei: currentVariant.imei,
+      serialNumber: currentVariant.serialNumber,
+      conditionGrade: currentVariant.conditionGrade,
+      conditionDescription: currentVariant.conditionDescription,
     },
 
     // Base product information (shared across all variants)
@@ -179,7 +218,10 @@ const getProductsGroupedByVariant = async (
   // .lean() returns plain JavaScript objects instead of Mongoose documents for better performance
   // .select() only fetches the fields we need, reducing data transfer
   const baseProductDocs = await BASE_PRODUCT.find(filters)
-    .select("_id name brand description category images variantAttributes")
+    .select(
+      "_id name brand description category images variantAttributes isActive",
+    )
+    .populate({ path: "category", select: "name", strictPopulate: false })
     .lean();
 
   // Extract just the IDs from base products to use in subsequent queries
@@ -322,36 +364,85 @@ const getProductsGroupedByVariant = async (
     // Return the product object with merged base and variant data
     return {
       // Base product fields (shared across all variants)
-      // baseProductId: variant.baseProductId,
-      // name: base?.name,
-      // brand: base?.brand,
-      // description: base?.description,
-      // category: base?.category,
-      // baseCreatedAt: base?.createdAt,
+      baseProductId: variant.baseProductId,
+      name: base?.name, // Fallback if needed, though 'title' is usually used
+      brand: base?.brand,
+      description: base?.description,
+      category: base?.category,
+      baseCreatedAt: base?.createdAt,
 
       // Variant-specific fields (from the selected representative variant)
-      // variantId: variant._id,
+      variantId: variant._id,
       title: variant.title,
       attributes: variant.attributes,
       sellingPrice: variant.sellingPrice,
       actualPrice: variant?.actualPrice || 0,
-      slug: variant?.slug,
-      // compareAtPrice: variant.compareAtPrice,
+      slug: variant?.slug || base.slug, // Fallback to base slug
+      compareAtPrice: variant.compareAtPrice,
       // Use variant images if available, otherwise fall back to base images
       images: variantImages,
       stock: variant.stock,
-      // sku: variant.sku,
-      // weight: variant.weight,
-      // dimensions: variant.dimensions,
-      // isDefault: variant.isDefault,
+      sku: variant.sku,
+      weight: variant.weight,
+      dimensions: variant.dimensions,
+      isDefault: variant.isDefault,
 
       // Additional metadata
-      // primaryAttributeKey: primaryAttrKey, // Which attribute was used for grouping
-      // variantCountInGroup: group.length, // How many variants share this primary attribute value
-      // is_wishlisted: isWishlisted,
-      isActive: base?.isActive, // Ensure soft-delete status is visible to admin
+      primaryAttributeKey: primaryAttrKey, // Which attribute was used for grouping
+      variantCountInGroup: group.length, // How many variants share this primary attribute value
+      is_wishlisted: isWishlisted,
+      isActive: base.isActive,
+      inventoryType: variant.inventoryType,
     };
   });
+
+  // Sort: Apply dynamic sorting based on options.sort
+  groupedProducts.sort((a, b) => {
+    // 1. Primary Sort: Active Status (Always put inactive at bottom if mixed, though usually we filter them out)
+    if (a.isActive && !b.isActive) return -1;
+    if (!a.isActive && b.isActive) return 1;
+
+    const sortType = options.sort || "newest";
+
+    switch (sortType) {
+      case "price_asc":
+        return a.sellingPrice - b.sellingPrice;
+
+      case "price_desc":
+        return b.sellingPrice - a.sellingPrice;
+
+      case "name_asc":
+        return a.name.localeCompare(b.name);
+
+      case "newest":
+      default:
+        // Sort by creation date (newest first)
+        const dateA = new Date(a.baseCreatedAt);
+        const dateB = new Date(b.baseCreatedAt);
+        return dateB - dateA;
+    }
+  });
+
+  // --- Calculate Facets (Before Pagination) ---
+  // We want facets based on the current search/filter results (excluding pagination)
+  // This allows the user to see what's available within their current search criteria.
+
+  const facets = {
+    brands: [
+      ...new Set(groupedProducts.map((p) => p.brand).filter(Boolean)),
+    ].sort(),
+    conditions: [
+      ...new Set(groupedProducts.map((p) => p.condition).filter(Boolean)),
+    ].sort(),
+    minPrice:
+      groupedProducts.length > 0
+        ? Math.min(...groupedProducts.map((p) => p.sellingPrice))
+        : 0,
+    maxPrice:
+      groupedProducts.length > 0
+        ? Math.max(...groupedProducts.map((p) => p.sellingPrice))
+        : 0,
+  };
 
   // Apply pagination to the grouped results
   // Now that we have grouped products, we can paginate them
@@ -360,6 +451,7 @@ const getProductsGroupedByVariant = async (
 
   return {
     products: paginatedProducts,
+    facets, // Return dynamic facets
     pagination: {
       total: totalGroupedProducts, // Total number of unique groups (not total variants)
       page,
@@ -391,6 +483,52 @@ const softDeleteProduct = async (id) => {
   return { _id: id, isActive: newStatus };
 };
 
+// Update base product
+const updateBaseProduct = async (id, updateData) => {
+  return await BASE_PRODUCT.findByIdAndUpdate(id, updateData, { new: true });
+};
+
+// Update product variant
+const updateProductVariant = async (id, updateData) => {
+  return await PRODUCT_VARIANT.findByIdAndUpdate(id, updateData, { new: true });
+};
+
+// Get base product by ID with populated category
+const getBaseProductById = async (id) => {
+  return await BASE_PRODUCT.findById(id)
+    .populate({ path: "category", select: "name", strictPopulate: false })
+    .lean();
+};
+
+// Get all variants for a base product
+const getVariantsByBaseProductId = async (baseProductId) => {
+  const variants = await PRODUCT_VARIANT.find({ baseProductId }).lean();
+
+  const enrichedVariants = await Promise.all(
+    variants.map(async (variant) => {
+      if (variant.inventoryType === "Unique") {
+        // Fetch inventory details (assuming 1:1 or taking the first one for the main details)
+        const inventoryUnit = await INVENTORY_UNIT.findOne({
+          productVariantId: variant._id,
+        }).lean();
+
+        if (inventoryUnit) {
+          return {
+            ...variant,
+            imei: inventoryUnit.imei,
+            serialNumber: inventoryUnit.serialNumber,
+            conditionGrade: inventoryUnit.conditionGrade,
+            conditionDescription: inventoryUnit.conditionDescription,
+          };
+        }
+      }
+      return variant;
+    }),
+  );
+
+  return enrichedVariants;
+};
+
 export default {
   createBaseProduct,
   createProductVariant,
@@ -398,4 +536,8 @@ export default {
   getProductDetailsByVariantSlug,
   getProductsGroupedByVariant,
   softDeleteProduct,
+  getBaseProductById,
+  getVariantsByBaseProductId,
+  updateBaseProduct,
+  updateProductVariant,
 };

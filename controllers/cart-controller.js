@@ -9,18 +9,17 @@ import { asyncHandler } from "../utils/async-handler.js";
  */
 
 const addToCart = asyncHandler(async (req, res) => {
-  //   const { baseProductId, variantId, quantity } = req.body;
-  //
-  //   const userId = "67e409c7c3aa0fe93489adc5"; // hardcoded remove this onece the user auth done
-  //
-  //   const cart = await cartService.addItemToCart({
-  //     userId,
-  //     baseProductId,
-  //     variantId,
-  //     quantity,
-  //   });
-  //
-  //   return sendResponse(res, 201, true, "Product added successfully", cart);
+  const { baseProductId, variantId, quantity } = req.body;
+  const userId = req.user.userId;
+
+  const cart = await cartService.addItemToCart({
+    userId,
+    baseProductId,
+    variantId,
+    quantity,
+  });
+
+  return sendResponse(res, 201, true, "Product added successfully", cart);
 });
 
 export { addToCart };

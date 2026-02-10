@@ -2,10 +2,11 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "../../controllers/wishlist-controller.js";
+import { requireAuth } from "../../middlewares/auth.js";
 
 const wishlistRouter = (router) => {
-  router.post("/add", addToWishlist);
-  router.delete("/remove", removeFromWishlist);
+  router.post("/add", requireAuth, addToWishlist);
+  router.delete("/remove", requireAuth, removeFromWishlist);
 
   return router;
 };

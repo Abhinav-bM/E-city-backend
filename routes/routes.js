@@ -8,18 +8,22 @@ import wishlistRouter from "./custom_routes/wishlist-route.js";
 import inventoryRouter from "./custom_routes/inventory-routes.js";
 import uploadRouter from "./custom_routes/upload-route.js";
 import categoryRouter from "./custom_routes/category-route.js";
+import brandRouter from "./custom_routes/brand-route.js";
 
 export const routes = (app) => {
   const router = Router();
 
+  // Mount specific routes FIRST (before product's catch-all /:slug)
   router.use("/auth", userRouter(router));
   router.use("/upload", uploadRouter(router));
-
-  router.use("/product", productRouter(router));
   router.use("/category", categoryRouter());
   router.use("/cart", cartRouter(router));
   router.use("/wishlist", wishlistRouter(router));
   router.use("/inventory", inventoryRouter(router));
+  router.use("/brand", brandRouter(router));
+
+  // Mount product LAST because it has catch-all /:slug route
+  router.use("/product", productRouter());
 
   // Default route - homepage
   router.use("/", (req, res) => {

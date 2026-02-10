@@ -8,10 +8,10 @@ import {
 
 const categoryRouter = () => {
   const router = Router();
-  router.post("/create", createCategory);
-  router.get("/get", getCategories);
-  router.put("/update/:id", updateCategory);
-  router.delete("/delete/:id", deleteCategory);
+  router.post("/", createCategory);
+  router.get("/", getCategories);
+  router.put("/:id", updateCategory);
+  router.delete("/:id", deleteCategory);
 
   return router;
 };

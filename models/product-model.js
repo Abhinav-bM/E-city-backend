@@ -19,12 +19,20 @@ const BaseProductSchema = new mongoose.Schema(
       required: true,
     },
     category: {
-      type: String,
+      type: mongoose.Schema.Types.Mixed, // Support both String and ObjectId for backward compatibility
       required: true,
     },
     isActive: {
       type: Boolean,
       default: true,
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+    isNewArrival: {
+      type: Boolean,
+      default: false,
     },
     images: [
       {
@@ -35,6 +43,17 @@ const BaseProductSchema = new mongoose.Schema(
       {
         name: { type: String, required: true },
         values: { type: [String], required: true },
+      },
+    ],
+    specifications: [
+      {
+        group: { type: String, required: true },
+        items: [
+          {
+            key: { type: String, required: true },
+            value: { type: String, required: true },
+          },
+        ],
       },
     ],
   },

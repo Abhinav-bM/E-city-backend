@@ -45,16 +45,74 @@ const getProductDetails = asyncHandler(async (req, res) => {
 
 // Get all products for listing
 const getAllProducts = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, category, brand } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    category,
+    brand,
+    isActive,
+    inventoryType,
+    search,
+    minPrice,
+    maxPrice,
+    condition,
+    sort,
+  } = req.query;
 
   const filters = {};
+  const options = { variantFilters: {} };
+
+  // Global Search (Title or Brand)
+  if (search) {
+    const searchRegex = new RegExp(search, "i");
+    filters.$or = [{ title: searchRegex }, { brand: searchRegex }];
+  }
+
+  // Base Product Filters
   if (category) filters.category = category;
-  if (brand) filters.brand = brand;
+  if (brand) filters.brand = { $in: brand.split(",") }; // Support multiple brands
+  // Handle isActive filter
+  if (isActive !== undefined && isActive !== "") {
+    if (isActive === "true" || isActive === "active" || isActive === true) {
+      filters.isActive = true;
+    } else if (
+      isActive === "false" ||
+      isActive === "draft" ||
+      isActive === false
+    ) {
+      filters.isActive = false;
+    }
+  }
+
+  // Handle Home Page Flags
+  if (req.query.isFeatured === "true") filters.isFeatured = true;
+  if (req.query.isNewArrival === "true") filters.isNewArrival = true;
+
+  // Variant Filters
+  if (inventoryType) {
+    options.variantFilters.inventoryType = inventoryType;
+  }
+
+  if (condition) {
+    options.variantFilters.condition = { $in: condition.split(",") };
+  }
+
+  if (minPrice || maxPrice) {
+    options.variantFilters.sellingPrice = {};
+    if (minPrice) options.variantFilters.sellingPrice.$gte = Number(minPrice);
+    if (maxPrice) options.variantFilters.sellingPrice.$lte = Number(maxPrice);
+  }
+
+  if (sort) {
+    options.sort = sort;
+  }
 
   const products = await productServices.getAllProducts(
     filters,
     Number.parseInt(page),
     Number.parseInt(limit),
+    null, // userId (can extract from req.user if needed later)
+    options,
   );
 
   return sendResponse(
@@ -81,4 +139,66 @@ const deleteProduct = asyncHandler(async (req, res) => {
   );
 });
 
-export { addProduct, getProductDetails, getAllProducts, deleteProduct };
+// Get product by base product ID (for editing)
+const getProductByBaseId = asyncHandler(async (req, res) => {
+  const baseProductId = req.params.id;
+
+  if (!baseProductId || baseProductId.trim().length === 0) {
+    return sendError(res, 400, "Invalid product ID");
+  }
+
+  try {
+    const productDetails =
+      await productServices.getProductByBaseId(baseProductId);
+    return sendResponse(
+      res,
+      200,
+      true,
+      "Product details retrieved successfully",
+      productDetails,
+    );
+  } catch (error) {
+    if (
+      error.message === "Base product not found" ||
+      error.message === "Product not found"
+    ) {
+      return sendError(res, 404, error.message);
+    }
+    throw error;
+  }
+});
+
+// Update product
+const updateProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const productData = req.body;
+
+  if (!id || id.trim().length === 0) {
+    return sendError(res, 400, "Invalid product ID");
+  }
+
+  try {
+    const updatedProduct = await productServices.updateProduct(id, productData);
+    return sendResponse(
+      res,
+      200,
+      true,
+      "Product updated successfully",
+      updatedProduct,
+    );
+  } catch (error) {
+    if (error.message === "Product not found") {
+      return sendError(res, 404, error.message);
+    }
+    throw error;
+  }
+});
+
+export {
+  addProduct,
+  getProductDetails,
+  getAllProducts,
+  deleteProduct,
+  getProductByBaseId,
+  updateProduct,
+};

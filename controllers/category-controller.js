@@ -27,6 +27,7 @@ const buildCategoryTree = (categories, parentId = null) => {
       image: cate.image,
       description: cate.description,
       isActive: cate.isActive,
+      isFeatured: cate.isFeatured,
       children: buildCategoryTree(categories, cate._id),
     });
   }
@@ -56,6 +57,10 @@ const createCategory = asyncHandler(async (req, res) => {
 
   if (parentId) {
     categoryObj.parentId = parentId;
+  }
+
+  if (req.body.isFeatured !== undefined) {
+    categoryObj.isFeatured = req.body.isFeatured;
   }
 
   const category = await new Category(categoryObj).save();
@@ -91,7 +96,7 @@ const getCategories = asyncHandler(async (req, res) => {
 // Update Category
 const updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, parentId, image, description } = req.body;
+  const { name, parentId, image, description, isFeatured } = req.body;
 
   const existingCategory = await Category.findById(id);
   if (!existingCategory) {
@@ -110,6 +115,7 @@ const updateCategory = asyncHandler(async (req, res) => {
   if (parentId !== undefined) existingCategory.parentId = parentId || null; // Allow setting to root
   if (image) existingCategory.image = image;
   if (description) existingCategory.description = description;
+  if (isFeatured !== undefined) existingCategory.isFeatured = isFeatured;
 
   const updatedCategory = await existingCategory.save();
 

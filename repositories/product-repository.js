@@ -126,10 +126,11 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
 
   // Step 5: Determine which images to use for current variant
   // Priority: variant images if available, otherwise base product images
-  const variantImages =
+  const variantImages = (
     currentVariant.images && currentVariant.images.length > 0
       ? currentVariant.images
-      : baseProductDoc?.images || [];
+      : baseProductDoc?.images || []
+  ).map((img) => (typeof img === "string" ? img : img.url));
 
   // Step 6: Build variant options map for easy frontend switching
   // Groups variants by their attribute combinations for easy selection
@@ -141,10 +142,11 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
     stock: variant.stock,
     sku: variant.sku,
     slug: variant.slug,
-    images:
-      variant.images && variant.images.length > 0
-        ? variant.images
-        : baseProductDoc?.images || [],
+    condition: variant.condition, // Critical: needed for frontend filtering
+    images: (variant.images && variant.images.length > 0
+      ? variant.images
+      : baseProductDoc?.images || []
+    ).map((img) => (typeof img === "string" ? img : img.url)),
     isAvailable: variant.stock > 0,
     isDefault: variant.isDefault,
   }));
@@ -178,12 +180,15 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
     // Base product information (shared across all variants)
     baseProduct: {
       baseProductId: baseProductDoc._id,
-      name: baseProductDoc.title,
+      title: baseProductDoc.title || baseProductDoc.name, // Ensure title is returned (frontend expects 'title')
       brand: baseProductDoc.brand,
       description: baseProductDoc.description,
       category: baseProductDoc.category,
-      baseImages: baseProductDoc.images || [], // Base images as fallback
+      baseImages: (baseProductDoc.images || []).map((img) =>
+        typeof img === "string" ? img : img.url,
+      ), // Base images as fallback
       variantAttributes: baseProductDoc.variantAttributes || [], // Available attributes (Color, Size, etc.)
+      specifications: baseProductDoc.specifications || [], // Added specifications
       createdAt: baseProductDoc.createdAt,
     },
 
@@ -219,7 +224,7 @@ const getProductsGroupedByVariant = async (
   // .select() only fetches the fields we need, reducing data transfer
   const baseProductDocs = await BASE_PRODUCT.find(filters)
     .select(
-      "_id name brand description category images variantAttributes isActive",
+      "_id name brand description category images variantAttributes isActive specifications",
     )
     .populate({ path: "category", select: "name", strictPopulate: false })
     .lean();
@@ -336,7 +341,7 @@ const getProductsGroupedByVariant = async (
   // Select the best variant from each group
   // For each group, we want to pick one "representative" variant
   // Priority: 1) Default variant, 2) First variant in the group
-  const groupedProducts = Array.from(variantGroups.values()).map((group) => {
+  let groupedProducts = Array.from(variantGroups.values()).map((group) => {
     // Sort group: default variants first, then by creation date
     group.sort((a, b) => {
       // If one is default and other isn't, default comes first
@@ -393,8 +398,16 @@ const getProductsGroupedByVariant = async (
       is_wishlisted: isWishlisted,
       isActive: base.isActive,
       inventoryType: variant.inventoryType,
+      conditionGrade: variant.conditionGrade,
+      specifications: base?.specifications || [],
+      variantAttributes: base?.variantAttributes || [], // Return available attributes (Color options, etc.)
     };
   });
+
+  // Filter out out-of-stock products if requested (for home page)
+  if (options.inStockOnly) {
+    groupedProducts = groupedProducts.filter((p) => (p.stock || 0) > 0);
+  }
 
   // Sort: Apply dynamic sorting based on options.sort
   groupedProducts.sort((a, b) => {
@@ -427,12 +440,41 @@ const getProductsGroupedByVariant = async (
   // We want facets based on the current search/filter results (excluding pagination)
   // This allows the user to see what's available within their current search criteria.
 
+  // Dynamic Attribute Facets
+  const dynamicFacets = {};
+
+  groupedProducts.forEach((p) => {
+    if (p.attributes) {
+      Object.entries(p.attributes).forEach(([key, value]) => {
+        // Skip internal or empty keys if any
+        if (!key || !value) return;
+
+        // Normalize key (optional, but good for consistency)
+        // const normalizedKey = key.trim();
+
+        if (!dynamicFacets[key]) {
+          dynamicFacets[key] = new Set();
+        }
+        dynamicFacets[key].add(value);
+      });
+    }
+  });
+
+  // Convert Sets to Arrays
+  const formattedDynamicFacets = {};
+  Object.keys(dynamicFacets).forEach((key) => {
+    formattedDynamicFacets[key] = Array.from(dynamicFacets[key]).sort();
+  });
+
   const facets = {
     brands: [
       ...new Set(groupedProducts.map((p) => p.brand).filter(Boolean)),
     ].sort(),
     conditions: [
       ...new Set(groupedProducts.map((p) => p.condition).filter(Boolean)),
+    ].sort(),
+    conditionGrades: [
+      ...new Set(groupedProducts.map((p) => p.conditionGrade).filter(Boolean)),
     ].sort(),
     minPrice:
       groupedProducts.length > 0
@@ -442,6 +484,7 @@ const getProductsGroupedByVariant = async (
       groupedProducts.length > 0
         ? Math.max(...groupedProducts.map((p) => p.sellingPrice))
         : 0,
+    attributes: formattedDynamicFacets, // Add dynamic attributes to response
   };
 
   // Apply pagination to the grouped results

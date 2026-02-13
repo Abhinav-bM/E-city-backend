@@ -107,8 +107,9 @@ const addProduct = async (productData) => {
       sku: variant.sku,
       inventoryType: variant.inventoryType,
       condition: condition,
-      conditionDescription: variant.conditionDescription, // Added
-      warranty: variant.warranty, // Added
+      conditionGrade: variant.conditionGrade, // Added
+      conditionDescription: variant.conditionDescription,
+      warranty: variant.warranty,
       images: variant.images,
       isDefault: variant.isDefault,
     };
@@ -281,8 +282,9 @@ const updateProduct = async (id, productData) => {
         stock: variantData.stock,
         sku: variantData.sku,
         condition: variantData.condition || match.condition,
-        conditionDescription: variantData.conditionDescription, // Added
-        warranty: variantData.warranty, // Added
+        conditionGrade: variantData.conditionGrade, // Added
+        conditionDescription: variantData.conditionDescription,
+        warranty: variantData.warranty,
         images: variantData.images, // Replace images?
         isDefault: variantData.isDefault,
         isActive: true, // Ensure it's active if it was sent in payload
@@ -343,8 +345,9 @@ const updateProduct = async (id, productData) => {
         sku: variantData.sku,
         inventoryType: variantData.inventoryType,
         condition: variantData.condition || "New",
-        conditionDescription: variantData.conditionDescription, // Added
-        warranty: variantData.warranty, // Added
+        conditionGrade: variantData.conditionGrade, // Added
+        conditionDescription: variantData.conditionDescription,
+        warranty: variantData.warranty,
         images: variantData.images,
         isDefault: variantData.isDefault,
       };

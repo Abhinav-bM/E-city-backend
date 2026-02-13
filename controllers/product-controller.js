@@ -57,6 +57,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
     maxPrice,
     condition,
     sort,
+    inStockOnly,
   } = req.query;
 
   const filters = {};
@@ -93,8 +94,35 @@ const getAllProducts = asyncHandler(async (req, res) => {
     options.variantFilters.inventoryType = inventoryType;
   }
 
+  // Handle 'type' filter (Shortcut for condition groups)
+  if (req.query.type) {
+    if (req.query.type === "new") {
+      // If type is new, strict filter for New
+      filters.condition = "New";
+    } else if (req.query.type === "used") {
+      // If type is used, filter for any non-New condition
+      filters.condition = { $in: ["Refurbished", "Open Box", "Used"] };
+    }
+  }
+
+  // Explicit Condition Filter (Overrides type if present, or acts as refinement)
   if (condition) {
-    options.variantFilters.condition = { $in: condition.split(",") };
+    const allConditions = condition.split(",");
+    const grades = ["Brand New", "Like New", "Excellent", "Good", "Fair"];
+
+    const selectedGrades = allConditions.filter((c) => grades.includes(c));
+    const selectedConditions = allConditions.filter((c) => !grades.includes(c));
+
+    if (selectedGrades.length > 0 && selectedConditions.length > 0) {
+      options.variantFilters.$or = [
+        { condition: { $in: selectedConditions } },
+        { conditionGrade: { $in: selectedGrades } },
+      ];
+    } else if (selectedGrades.length > 0) {
+      options.variantFilters.conditionGrade = { $in: selectedGrades };
+    } else if (selectedConditions.length > 0) {
+      options.variantFilters.condition = { $in: selectedConditions };
+    }
   }
 
   if (minPrice || maxPrice) {
@@ -106,6 +134,44 @@ const getAllProducts = asyncHandler(async (req, res) => {
   if (sort) {
     options.sort = sort;
   }
+
+  // Filter out out-of-stock products if requested (for home page)
+  if (inStockOnly === "true" || inStockOnly === true) {
+    options.inStockOnly = true;
+  }
+
+  // Dynamic Attribute Filters
+  // Any query param that isn't a known filter key is treated as an attribute filter
+  const knownKeys = [
+    "page",
+    "limit",
+    "category",
+    "brand",
+    "isActive",
+    "inventoryType",
+    "search",
+    "minPrice",
+    "maxPrice",
+    "condition",
+    "sort",
+    "inStockOnly",
+    "isFeatured",
+    "isNewArrival",
+  ];
+
+  Object.keys(req.query).forEach((key) => {
+    if (!knownKeys.includes(key)) {
+      // Assume it's an attribute filter (e.g. "Color", "Storage")
+      // Support comma-separated values
+      // backend expects standard keys, so we trust frontend sends "Color" not "color" if that's how it's stored.
+      const values = req.query[key].split(",");
+      if (values.length > 0) {
+        // Use dot notation for nested attribute query in Mongoose
+        // e.g. "attributes.Color": { $in: ["Red", "Blue"] }
+        options.variantFilters[`attributes.${key}`] = { $in: values };
+      }
+    }
+  });
 
   const products = await productServices.getAllProducts(
     filters,

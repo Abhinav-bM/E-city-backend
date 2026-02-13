@@ -36,6 +36,7 @@
     "mongoose": "^8.19.2",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
     "redis": "^4.7.0",
     "springedge": "^1.0.6"
   }

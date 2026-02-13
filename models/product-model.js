@@ -19,7 +19,8 @@ const BaseProductSchema = new mongoose.Schema(
       required: true,
     },
     category: {
-      type: mongoose.Schema.Types.Mixed, // Support both String and ObjectId for backward compatibility
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
       required: true,
     },
     isActive: {
@@ -146,6 +147,14 @@ const ProductVariantSchema = new mongoose.Schema(
     conditionDescription: {
       type: String, // e.g., "Minor scratch on screen", "Original box missing"
     },
+    conditionGrade: {
+      type: String, // e.g., "Like New", "Excellent", "Good", "Fair"
+      enum: ["Brand New", "Like New", "Excellent", "Good", "Fair"],
+      // Keeping "Brand New" in enum for data consistency even if UI hides it for now, or just loose string?
+      // User removed "Brand New" from UI for Used items.
+      // Let's allow loose string or updated enum.
+      // Enum validation might break existing data if I'm not careful, but this is new field.
+    },
     warranty: {
       type: String, // e.g., "1 Year Manufacturer", "30 Days Store Warranty"
     },
@@ -203,7 +212,8 @@ ProductVariantSchema.pre("save", async function (next) {
 ProductVariantSchema.index({ baseProductId: 1 });
 ProductVariantSchema.index({ isDefault: 1 });
 // ProductVariantSchema.index({ slug: 1 }); // Removed duplicate index
-ProductVariantSchema.index({ condition: 1 }); // Index for filtering by condition/grade
+ProductVariantSchema.index({ condition: 1 });
+ProductVariantSchema.index({ conditionGrade: 1 });
 
 const BASE_PRODUCT = mongoose.model("BaseProduct", BaseProductSchema);
 const PRODUCT_VARIANT = mongoose.model("ProductVariant", ProductVariantSchema);

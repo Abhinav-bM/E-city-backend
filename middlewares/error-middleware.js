@@ -7,6 +7,11 @@ const errorMiddleware = (err, req, res, next) => {
     console.error(err.stack || err);
   }
 
+  // Handle Mongoose Validation Errors
+  if (err.name === "ValidationError") {
+    return sendError(res, 400, "Validation Error", err.message);
+  }
+
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";
 

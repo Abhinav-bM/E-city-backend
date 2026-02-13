@@ -45,16 +45,140 @@ const getProductDetails = asyncHandler(async (req, res) => {
 
 // Get all products for listing
 const getAllProducts = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, category, brand } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    category,
+    brand,
+    isActive,
+    inventoryType,
+    search,
+    minPrice,
+    maxPrice,
+    condition,
+    sort,
+    inStockOnly,
+  } = req.query;
 
   const filters = {};
+  const options = { variantFilters: {} };
+
+  // Global Search (Title or Brand)
+  if (search) {
+    const searchRegex = new RegExp(search, "i");
+    filters.$or = [{ title: searchRegex }, { brand: searchRegex }];
+  }
+
+  // Base Product Filters
   if (category) filters.category = category;
-  if (brand) filters.brand = brand;
+  if (brand) filters.brand = { $in: brand.split(",") }; // Support multiple brands
+  // Handle isActive filter
+  if (isActive !== undefined && isActive !== "") {
+    if (isActive === "true" || isActive === "active" || isActive === true) {
+      filters.isActive = true;
+    } else if (
+      isActive === "false" ||
+      isActive === "draft" ||
+      isActive === false
+    ) {
+      filters.isActive = false;
+    }
+  }
+
+  // Handle Home Page Flags
+  if (req.query.isFeatured === "true") filters.isFeatured = true;
+  if (req.query.isNewArrival === "true") filters.isNewArrival = true;
+
+  // Variant Filters
+  if (inventoryType) {
+    options.variantFilters.inventoryType = inventoryType;
+  }
+
+  // Handle 'type' filter (Shortcut for condition groups)
+  if (req.query.type) {
+    if (req.query.type === "new") {
+      // If type is new, strict filter for New
+      filters.condition = "New";
+    } else if (req.query.type === "used") {
+      // If type is used, filter for any non-New condition
+      filters.condition = { $in: ["Refurbished", "Open Box", "Used"] };
+    }
+  }
+
+  // Explicit Condition Filter (Overrides type if present, or acts as refinement)
+  if (condition) {
+    const allConditions = condition.split(",");
+    const grades = ["Brand New", "Like New", "Excellent", "Good", "Fair"];
+
+    const selectedGrades = allConditions.filter((c) => grades.includes(c));
+    const selectedConditions = allConditions.filter((c) => !grades.includes(c));
+
+    if (selectedGrades.length > 0 && selectedConditions.length > 0) {
+      options.variantFilters.$or = [
+        { condition: { $in: selectedConditions } },
+        { conditionGrade: { $in: selectedGrades } },
+      ];
+    } else if (selectedGrades.length > 0) {
+      options.variantFilters.conditionGrade = { $in: selectedGrades };
+    } else if (selectedConditions.length > 0) {
+      options.variantFilters.condition = { $in: selectedConditions };
+    }
+  }
+
+  if (minPrice || maxPrice) {
+    options.variantFilters.sellingPrice = {};
+    if (minPrice) options.variantFilters.sellingPrice.$gte = Number(minPrice);
+    if (maxPrice) options.variantFilters.sellingPrice.$lte = Number(maxPrice);
+  }
+
+  if (sort) {
+    options.sort = sort;
+  }
+
+  // Filter out out-of-stock products if requested (for home page)
+  if (inStockOnly === "true" || inStockOnly === true) {
+    options.inStockOnly = true;
+  }
+
+  // Dynamic Attribute Filters
+  // Any query param that isn't a known filter key is treated as an attribute filter
+  const knownKeys = [
+    "page",
+    "limit",
+    "category",
+    "brand",
+    "isActive",
+    "inventoryType",
+    "search",
+    "minPrice",
+    "maxPrice",
+    "condition",
+    "sort",
+    "inStockOnly",
+    "isFeatured",
+    "isNewArrival",
+  ];
+
+  Object.keys(req.query).forEach((key) => {
+    if (!knownKeys.includes(key)) {
+      // Assume it's an attribute filter (e.g. "Color", "Storage")
+      // Support comma-separated values
+      // backend expects standard keys, so we trust frontend sends "Color" not "color" if that's how it's stored.
+      const values = req.query[key].split(",");
+      if (values.length > 0) {
+        // Use dot notation for nested attribute query in Mongoose
+        // e.g. "attributes.Color": { $in: ["Red", "Blue"] }
+        options.variantFilters[`attributes.${key}`] = { $in: values };
+      }
+    }
+  });
 
   const products = await productServices.getAllProducts(
     filters,
     Number.parseInt(page),
     Number.parseInt(limit),
+    null, // userId (can extract from req.user if needed later)
+    options,
   );
 
   return sendResponse(
@@ -66,4 +190,81 @@ const getAllProducts = asyncHandler(async (req, res) => {
   );
 });
 
-export { addProduct, getProductDetails, getAllProducts };
+// Soft Delete Product
+const deleteProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const result = await productServices.deleteProduct(id);
+
+  return sendResponse(
+    res,
+    200,
+    true,
+    `Product ${result.isActive ? "activated" : "deactivated"} successfully`,
+    result,
+  );
+});
+
+// Get product by base product ID (for editing)
+const getProductByBaseId = asyncHandler(async (req, res) => {
+  const baseProductId = req.params.id;
+
+  if (!baseProductId || baseProductId.trim().length === 0) {
+    return sendError(res, 400, "Invalid product ID");
+  }
+
+  try {
+    const productDetails =
+      await productServices.getProductByBaseId(baseProductId);
+    return sendResponse(
+      res,
+      200,
+      true,
+      "Product details retrieved successfully",
+      productDetails,
+    );
+  } catch (error) {
+    if (
+      error.message === "Base product not found" ||
+      error.message === "Product not found"
+    ) {
+      return sendError(res, 404, error.message);
+    }
+    throw error;
+  }
+});
+
+// Update product
+const updateProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const productData = req.body;
+
+  if (!id || id.trim().length === 0) {
+    return sendError(res, 400, "Invalid product ID");
+  }
+
+  try {
+    const updatedProduct = await productServices.updateProduct(id, productData);
+    return sendResponse(
+      res,
+      200,
+      true,
+      "Product updated successfully",
+      updatedProduct,
+    );
+  } catch (error) {
+    if (error.message === "Product not found") {
+      return sendError(res, 404, error.message);
+    }
+    throw error;
+  }
+});
+
+export {
+  addProduct,
+  getProductDetails,
+  getAllProducts,
+  deleteProduct,
+  getProductByBaseId,
+  updateProduct,
+};

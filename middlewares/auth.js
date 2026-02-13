@@ -1,5 +1,4 @@
-// middleware/auth.js
-import { verifyAccessToken } from "../utils/jwt-helper.js";
+import { verifyAccessToken } from "../utils/token.js";
 /**
  * Protect routes using Authorization: Bearer <accessToken>
  * On success: attaches req.user = tokenPayload
@@ -12,8 +11,7 @@ export const requireAuth = (req, res, next) => {
       return res.status(401).json({ message: "Missing access token" });
 
     const payload = verifyAccessToken(token); // throws on invalid/expired
-    console.log(payload);
-    req.user = payload; 
+    req.user = payload;
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid or expired access token" });

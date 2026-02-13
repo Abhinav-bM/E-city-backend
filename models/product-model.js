@@ -19,12 +19,21 @@ const BaseProductSchema = new mongoose.Schema(
       required: true,
     },
     category: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
       required: true,
     },
     isActive: {
       type: Boolean,
       default: true,
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+    isNewArrival: {
+      type: Boolean,
+      default: false,
     },
     images: [
       {
@@ -35,6 +44,17 @@ const BaseProductSchema = new mongoose.Schema(
       {
         name: { type: String, required: true },
         values: { type: [String], required: true },
+      },
+    ],
+    specifications: [
+      {
+        group: { type: String, required: true },
+        items: [
+          {
+            key: { type: String, required: true },
+            value: { type: String, required: true },
+          },
+        ],
       },
     ],
   },
@@ -89,6 +109,14 @@ const ProductVariantSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 0,
+      // NOTE: For 'Unique' items, this should be a cached count of 'Available' InventoryUnits
+    },
+    // How do we track stock for this variant?
+    inventoryType: {
+      type: String,
+      enum: ["Quantity", "Unique"], // Quantity = Standard (New), Unique = Serial/IMEI based
+      default: "Quantity",
+      required: true,
     },
     sku: {
       type: String,
@@ -118,6 +146,14 @@ const ProductVariantSchema = new mongoose.Schema(
     },
     conditionDescription: {
       type: String, // e.g., "Minor scratch on screen", "Original box missing"
+    },
+    conditionGrade: {
+      type: String, // e.g., "Like New", "Excellent", "Good", "Fair"
+      enum: ["Brand New", "Like New", "Excellent", "Good", "Fair"],
+      // Keeping "Brand New" in enum for data consistency even if UI hides it for now, or just loose string?
+      // User removed "Brand New" from UI for Used items.
+      // Let's allow loose string or updated enum.
+      // Enum validation might break existing data if I'm not careful, but this is new field.
     },
     warranty: {
       type: String, // e.g., "1 Year Manufacturer", "30 Days Store Warranty"
@@ -176,7 +212,8 @@ ProductVariantSchema.pre("save", async function (next) {
 ProductVariantSchema.index({ baseProductId: 1 });
 ProductVariantSchema.index({ isDefault: 1 });
 // ProductVariantSchema.index({ slug: 1 }); // Removed duplicate index
-ProductVariantSchema.index({ condition: 1 }); // Index for filtering by condition/grade
+ProductVariantSchema.index({ condition: 1 });
+ProductVariantSchema.index({ conditionGrade: 1 });
 
 const BASE_PRODUCT = mongoose.model("BaseProduct", BaseProductSchema);
 const PRODUCT_VARIANT = mongoose.model("ProductVariant", ProductVariantSchema);

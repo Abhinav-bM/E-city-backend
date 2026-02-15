@@ -4,6 +4,7 @@ import {
   verifyOtp,
   refresh,
   getMe,
+  getCsrfToken,
 } from "../../controllers/user-authController.js";
 
 import { validateRequest } from "../../middlewares/validation-middleware.js";
@@ -19,6 +20,7 @@ const userRouter = (router) => {
   router.post("/verify-otp", validateRequest(verifyOtpSchema), verifyOtp);
   router.post("/refresh", refresh);
   router.post("/logout", logout);
+  router.get("/csrf", getCsrfToken);
   return router;
 };
 

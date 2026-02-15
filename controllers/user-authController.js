@@ -10,7 +10,10 @@ import {
   createRefreshToken,
   verifyRefreshToken,
   setRefreshTokenCookie,
+  setAccessTokenCookie,
+  setXsrfTokenCookie,
 } from "../utils/token.js";
+import crypto from "crypto";
 import { sendResponse, sendError } from "../utils/response-handler.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
@@ -81,11 +84,14 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   // No need to manually delete from Redis, it expires automatically (or we could del if we want one-time use)
 
   setRefreshTokenCookie(res, refreshToken);
+  setAccessTokenCookie(res, accessToken);
+
+  // Generate a random CSRF token
+  const xsrfToken = crypto.randomBytes(32).toString("hex");
+  setXsrfTokenCookie(res, xsrfToken);
 
   // After verifying OTP successfully
   return sendResponse(res, 200, true, "OTP verified successfully", {
-    accessToken,
-    // refreshToken (Cookie only)
     user: {
       userId: user._id,
       phone: user.phone,
@@ -115,15 +121,25 @@ export const refresh = asyncHandler(async (req, res) => {
   const newRefreshToken = createRefreshToken(newPayload);
 
   setRefreshTokenCookie(res, newRefreshToken);
-  return sendResponse(res, 200, true, "Refresh token refreshed successfully", {
-    accessToken: newAccessToken,
-  });
+  setAccessTokenCookie(res, newAccessToken);
+
+  // Regenerate CSRF token on refresh
+  const xsrfToken = crypto.randomBytes(32).toString("hex");
+  setXsrfTokenCookie(res, xsrfToken);
+
+  return sendResponse(
+    res,
+    200,
+    true,
+    "Refresh token refreshed successfully",
+    null,
+  );
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies?.refreshToken;
-
-  res.clearCookie("refreshToken", { path: "/auth/refresh" });
+  res.clearCookie("refreshToken", { path: "/api/auth/refresh" });
+  res.clearCookie("accessToken", { path: "/" });
+  res.clearCookie("XSRF-TOKEN", { path: "/" });
   return sendResponse(res, 200, true, "Logged out successfully");
 });
 
@@ -139,4 +155,10 @@ export const getMe = asyncHandler(async (req, res) => {
       name: user.name,
     },
   });
+});
+
+export const getCsrfToken = asyncHandler(async (req, res) => {
+  const xsrfToken = crypto.randomBytes(32).toString("hex");
+  setXsrfTokenCookie(res, xsrfToken);
+  return sendResponse(res, 200, true, "CSRF token generated successfully");
 });

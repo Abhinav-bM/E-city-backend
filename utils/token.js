@@ -24,7 +24,27 @@ export const setRefreshTokenCookie = (res, token) => {
     httpOnly: true,
     secure: isProd, // true on production (HTTPS)
     sameSite: "strict", // prevent CSRF to some extent
-    path: "/auth/refresh", // limit cookie to refresh endpoint if desired
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days (ms) — should match refresh token expiry
+    path: "/api/auth/refresh", // limit cookie to refresh endpoint
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (ms) — should match refresh token expiry
+  });
+};
+
+export const setAccessTokenCookie = (res, token) => {
+  const isProd = process.env.NODE_ENV === "production";
+  res.cookie("accessToken", token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax", // Better for cross-site link navigation while still providing some protection
+    path: "/",
+    maxAge: 15 * 60 * 1000, // 15 mins (ms) - matches ACCESS_TOKEN_EXPIRES_IN default
+  });
+};
+
+export const setXsrfTokenCookie = (res, token) => {
+  res.cookie("XSRF-TOKEN", token, {
+    httpOnly: false, // Must be readable by frontend JS
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
   });
 };

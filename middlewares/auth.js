@@ -5,10 +5,18 @@ import { verifyAccessToken } from "../utils/token.js";
  */
 export const requireAuth = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization || "";
-    const token = authHeader.split(" ")[1];
-    if (!token)
+    // 1. Check cookies (Priority for security hardened flow)
+    let token = req.cookies?.accessToken;
+
+    // 2. Fallback to Authorization header (Backward compatibility)
+    if (!token) {
+      const authHeader = req.headers.authorization || "";
+      token = authHeader.split(" ")[1];
+    }
+
+    if (!token) {
       return res.status(401).json({ message: "Missing access token" });
+    }
 
     const payload = verifyAccessToken(token); // throws on invalid/expired
     req.user = payload;

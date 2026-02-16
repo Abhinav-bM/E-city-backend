@@ -12,7 +12,6 @@ const BrandSchema = new mongoose.Schema(
     slug: {
       type: String,
       unique: true,
-      index: true,
     },
     logo: {
       url: String,

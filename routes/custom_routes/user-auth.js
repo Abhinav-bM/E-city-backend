@@ -1,3 +1,4 @@
+import { Router } from "express";
 import {
   logout,
   sentOtp,
@@ -13,8 +14,11 @@ import {
   verifyOtpSchema,
 } from "../../utils/validation-schemas.js";
 
-const userRouter = (router) => {
-  router.get("/me", getMe);
+import { requireAuth } from "../../middlewares/auth.js";
+
+const userRouter = () => {
+  const router = Router();
+  router.get("/me", requireAuth, getMe);
 
   router.post("/sent-otp", validateRequest(sendOtpSchema), sentOtp);
   router.post("/verify-otp", validateRequest(verifyOtpSchema), verifyOtp);

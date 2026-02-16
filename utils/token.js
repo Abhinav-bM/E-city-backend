@@ -18,20 +18,25 @@ export const verifyAccessToken = (token) =>
 export const verifyRefreshToken = (token) =>
   jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 
-export const setRefreshTokenCookie = (res, token) => {
+export const setRefreshTokenCookie = (
+  res,
+  token,
+  name = "refreshToken",
+  path = "/api/auth/refresh",
+) => {
   const isProd = process.env.NODE_ENV === "production";
-  res.cookie("refreshToken", token, {
+  res.cookie(name, token, {
     httpOnly: true,
     secure: isProd, // true on production (HTTPS)
     sameSite: "strict", // prevent CSRF to some extent
-    path: "/api/auth/refresh", // limit cookie to refresh endpoint
+    path: path,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (ms) — should match refresh token expiry
   });
 };
 
-export const setAccessTokenCookie = (res, token) => {
+export const setAccessTokenCookie = (res, token, name = "accessToken") => {
   const isProd = process.env.NODE_ENV === "production";
-  res.cookie("accessToken", token, {
+  res.cookie(name, token, {
     httpOnly: true,
     secure: isProd,
     sameSite: "lax", // Better for cross-site link navigation while still providing some protection

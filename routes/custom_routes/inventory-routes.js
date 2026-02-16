@@ -1,3 +1,4 @@
+import { Router } from "express";
 import {
   addInventoryUnit,
   getVariantInventory,
@@ -5,7 +6,8 @@ import {
   deleteInventoryUnit,
 } from "../../controllers/inventory-controller.js";
 
-const inventoryRouter = (router) => {
+const inventoryRouter = () => {
+  const router = Router();
   // Admin: Add specific unit to a product variant
   router.post("/add", addInventoryUnit);
 

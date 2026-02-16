@@ -19,12 +19,10 @@ const InventoryUnitSchema = new mongoose.Schema(
     serialNumber: {
       type: String,
       trim: true,
-      index: true,
     },
     imei: {
       type: String,
       trim: true,
-      index: true,
     },
     // Condition Details (Critical for Refurbished)
     conditionGrade: {

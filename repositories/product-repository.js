@@ -219,6 +219,20 @@ const getProductsGroupedByVariant = async (
   // Calculate how many items to skip for pagination (e.g., page 2 with limit 10 = skip 10)
   const skip = (page - 1) * limit;
 
+  // Resolve category name/slug to ObjectId if it's not a valid ObjectId string
+  if (filters.category && !mongoose.Types.ObjectId.isValid(filters.category)) {
+    const foundCategory = await Category.findOne({
+      $or: [
+        { name: new RegExp(`^${filters.category}$`, "i") },
+        { slug: filters.category },
+      ],
+    }).select("_id");
+    // If not found, use a non-existent ObjectId to ensure zero results instead of a CastError
+    filters.category = foundCategory
+      ? foundCategory._id
+      : new mongoose.Types.ObjectId();
+  }
+
   // Find all base products matching the provided filters (category, brand, etc.)
   // .lean() returns plain JavaScript objects instead of Mongoose documents for better performance
   // .select() only fetches the fields we need, reducing data transfer
@@ -226,8 +240,35 @@ const getProductsGroupedByVariant = async (
     .select(
       "_id name brand description category images variantAttributes isActive specifications",
     )
-    .populate({ path: "category", select: "name", strictPopulate: false })
     .lean();
+
+  // Manually populate categories to be resilient to corrupted data (e.g. strings instead of ObjectIds)
+  const categoryIds = [
+    ...new Set(
+      baseProductDocs
+        .map((b) => b.category)
+        .filter((cat) => mongoose.Types.ObjectId.isValid(cat)),
+    ),
+  ];
+
+  const categoryMap = new Map();
+  if (categoryIds.length > 0) {
+    const categories = await Category.find({ _id: { $in: categoryIds } })
+      .select("name")
+      .lean();
+    categories.forEach((cat) => categoryMap.set(cat._id.toString(), cat));
+  }
+
+  // Attach categories back to base products
+  baseProductDocs.forEach((doc) => {
+    if (doc.category) {
+      const catIdStr = doc.category.toString();
+      doc.category = categoryMap.get(catIdStr) || {
+        _id: doc.category,
+        name: "Uncategorized",
+      };
+    }
+  });
 
   // Extract just the IDs from base products to use in subsequent queries
   const baseProductIdList = baseProductDocs.map((b) => b._id);

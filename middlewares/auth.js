@@ -6,7 +6,7 @@ import { verifyAccessToken } from "../utils/token.js";
 export const requireAuth = (req, res, next) => {
   try {
     // 1. Check cookies (Priority for security hardened flow)
-    let token = req.cookies?.accessToken;
+    let token = req.cookies?.accessToken || req.cookies?.adminAccessToken;
 
     // 2. Fallback to Authorization header (Backward compatibility)
     if (!token) {

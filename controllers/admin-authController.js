@@ -108,3 +108,9 @@ export const getMe = asyncHandler(async (req, res) => {
     },
   });
 });
+
+export const getCsrfAdminToken = asyncHandler(async (req, res) => {
+  const xsrfToken = crypto.randomBytes(32).toString("hex");
+  setXsrfTokenCookie(res, xsrfToken);
+  return sendResponse(res, 200, true, "CSRF token generated successfully");
+});

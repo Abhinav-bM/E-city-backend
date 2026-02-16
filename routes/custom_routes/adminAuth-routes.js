@@ -4,8 +4,8 @@ import {
   refresh,
   logout,
   getMe,
+  getCsrfAdminToken,
 } from "../../controllers/admin-authController.js";
-import { getCsrfToken } from "../../controllers/user-authController.js";
 import { requireAuth } from "../../middlewares/auth.js";
 
 const adminAuthRouter = () => {
@@ -14,7 +14,7 @@ const adminAuthRouter = () => {
   router.post("/refresh", refresh);
   router.post("/logout", logout);
   router.get("/me", requireAuth, getMe);
-  router.get("/csrf", getCsrfToken);
+  router.get("/csrf", getCsrfAdminToken);
   return router;
 };
 

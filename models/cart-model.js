@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const CartItemSchema = new mongoose.Schema({
   productVariantId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Product",
+    ref: "ProductVariant",
     required: true,
   },
   quantity: {
@@ -11,6 +11,10 @@ const CartItemSchema = new mongoose.Schema({
     required: true,
     min: 1,
     default: 1,
+  },
+  priceAtAdd: {
+    type: Number,
+    required: true,
   },
 });
 
@@ -32,7 +36,7 @@ const CartSchema = new mongoose.Schema(
       default: 0,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const CART = mongoose.model("Cart", CartSchema);

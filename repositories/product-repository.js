@@ -613,6 +613,62 @@ const getVariantsByBaseProductId = async (baseProductId) => {
   return enrichedVariants;
 };
 
+// Get single variant by ID (enriched with Inventory info if Unique)
+const getVariantById = async (variantId) => {
+  const variant = await PRODUCT_VARIANT.findById(variantId).lean();
+  if (!variant) return null;
+
+  if (variant.inventoryType === "Unique") {
+    const inventoryUnit = await INVENTORY_UNIT.findOne({
+      productVariantId: variant._id,
+    }).lean();
+
+    if (inventoryUnit) {
+      return {
+        ...variant,
+        imei: inventoryUnit.imei,
+        serialNumber: inventoryUnit.serialNumber,
+        conditionGrade: inventoryUnit.conditionGrade,
+        conditionDescription: inventoryUnit.conditionDescription,
+        status: inventoryUnit.status, // Ensure status comes from inventory for unique items
+      };
+    }
+  }
+  return variant;
+};
+
+// Get default variant for a base product
+const getDefaultVariant = async (baseProductId) => {
+  let variant = await PRODUCT_VARIANT.findOne({
+    baseProductId,
+    isDefault: true,
+  }).lean();
+
+  if (!variant) {
+    // Fallback to first variant if no default set
+    variant = await PRODUCT_VARIANT.findOne({ baseProductId }).lean();
+  }
+
+  if (variant && variant.inventoryType === "Unique") {
+    const inventoryUnit = await INVENTORY_UNIT.findOne({
+      productVariantId: variant._id,
+    }).lean();
+
+    if (inventoryUnit) {
+      return {
+        ...variant,
+        imei: inventoryUnit.imei,
+        serialNumber: inventoryUnit.serialNumber,
+        conditionGrade: inventoryUnit.conditionGrade,
+        conditionDescription: inventoryUnit.conditionDescription,
+        status: inventoryUnit.status,
+      };
+    }
+  }
+
+  return variant;
+};
+
 export default {
   createBaseProduct,
   createProductVariant,
@@ -624,4 +680,6 @@ export default {
   getVariantsByBaseProductId,
   updateBaseProduct,
   updateProductVariant,
+  getVariantById,
+  getDefaultVariant,
 };

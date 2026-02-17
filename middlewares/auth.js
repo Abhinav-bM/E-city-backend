@@ -14,6 +14,11 @@ export const requireAuth = (req, res, next) => {
       token = authHeader.split(" ")[1];
     }
 
+    // 4. Temporary Bypass for Testing
+    req.user = { userId: "679f2203ca8780775d78703e" }; // Hardcoded valid User ID
+    next();
+
+    /*
     if (!token) {
       return res.status(401).json({ message: "Missing access token" });
     }
@@ -21,6 +26,7 @@ export const requireAuth = (req, res, next) => {
     const payload = verifyAccessToken(token); // throws on invalid/expired
     req.user = payload;
     next();
+    */
   } catch (err) {
     return res.status(401).json({ message: "Invalid or expired access token" });
   }

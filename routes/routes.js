@@ -10,6 +10,9 @@ import uploadRouter from "./custom_routes/upload-route.js";
 import categoryRouter from "./custom_routes/category-route.js";
 import brandRouter from "./custom_routes/brand-route.js";
 import adminAuthRouter from "./custom_routes/adminAuth-routes.js";
+import orderRouter from "./custom_routes/order-route.js";
+import paymentRouter from "./custom_routes/payment-route.js";
+import returnRouter from "./custom_routes/return-route.js";
 
 export const routes = (app) => {
   const router = Router();
@@ -23,6 +26,9 @@ export const routes = (app) => {
   router.use("/wishlist", wishlistRouter());
   router.use("/inventory", inventoryRouter());
   router.use("/brand", brandRouter());
+  router.use("/order", orderRouter());
+  router.use("/payment", paymentRouter());
+  router.use("/return", returnRouter);
 
   // Mount product LAST because it has catch-all /:slug route
   router.use("/product", productRouter());

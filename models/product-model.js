@@ -38,6 +38,7 @@ const BaseProductSchema = new mongoose.Schema(
     images: [
       {
         url: String,
+        isMain: { type: Boolean, default: false },
       },
     ],
     variantAttributes: [
@@ -103,6 +104,7 @@ const ProductVariantSchema = new mongoose.Schema(
         alt: {
           type: String,
         },
+        isMain: { type: Boolean, default: false },
       },
     ],
     stock: {

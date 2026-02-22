@@ -127,6 +127,7 @@ const addProduct = async (productData) => {
         conditionDescription: variant.conditionDescription,
         serialNumber: variant.serialNumber,
         imei: variant.imei,
+        uniqueImages: variant.images, // Pass variant images as unique images for this unit
         status: "Available",
       };
 
@@ -366,6 +367,7 @@ const updateProduct = async (id, productData) => {
           conditionDescription: variantData.conditionDescription,
           serialNumber: variantData.serialNumber,
           imei: variantData.imei,
+          uniqueImages: variantData.images, // Pass images
           status: "Available",
         };
         await inventoryRepository.createInventoryUnit(inventoryData);

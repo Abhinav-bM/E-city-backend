@@ -180,15 +180,14 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
     // Base product information (shared across all variants)
     baseProduct: {
       baseProductId: baseProductDoc._id,
-      title: baseProductDoc.title || baseProductDoc.name, // Ensure title is returned (frontend expects 'title')
+      title: baseProductDoc.title || baseProductDoc.name,
       brand: baseProductDoc.brand,
       description: baseProductDoc.description,
       category: baseProductDoc.category,
-      baseImages: (baseProductDoc.images || []).map((img) =>
-        typeof img === "string" ? img : img.url,
-      ), // Base images as fallback
-      variantAttributes: baseProductDoc.variantAttributes || [], // Available attributes (Color, Size, etc.)
-      specifications: baseProductDoc.specifications || [], // Added specifications
+      // Common images — as {url, isMain} objects so frontend can sort by isMain
+      images: baseProductDoc.images || [],
+      variantAttributes: baseProductDoc.variantAttributes || [],
+      specifications: baseProductDoc.specifications || [],
       createdAt: baseProductDoc.createdAt,
     },
 
@@ -427,6 +426,10 @@ const getProductsGroupedByVariant = async (
       compareAtPrice: variant.compareAtPrice,
       // Use variant images if available, otherwise fall back to base images
       images: variantImages,
+      // Always include base product images separately for frontend to merge/display both
+      baseImages: (base?.images || []).map((img) =>
+        typeof img === "string" ? img : img.url,
+      ),
       stock: variant.stock,
       sku: variant.sku,
       weight: variant.weight,

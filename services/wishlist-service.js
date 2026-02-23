@@ -10,4 +10,9 @@ const removeFromWishlist = async (userId, productId) => {
   return await wishlistRepository.removeFromWishlist(userId, productId);
 };
 
-export default { addToWishlist, removeFromWishlist };
+// Get a user's wishlist
+const getWishlist = async (userId) => {
+  return await wishlistRepository.getWishlist(userId);
+};
+
+export default { addToWishlist, removeFromWishlist, getWishlist };

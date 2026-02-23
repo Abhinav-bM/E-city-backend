@@ -2,6 +2,7 @@ import RETURN_REQUEST from "../models/return-model.js";
 import ORDER from "../models/order-model.js";
 import { PRODUCT_VARIANT } from "../models/product-model.js";
 import INVENTORY_UNIT from "../models/inventory-model.js";
+import USER from "../models/user.js";
 import {
   createReturnSchema,
   updateReturnStatusSchema,

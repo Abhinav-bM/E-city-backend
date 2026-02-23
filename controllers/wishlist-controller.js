@@ -30,4 +30,17 @@ const removeFromWishlist = asyncHandler(async (req, res) => {
   );
 });
 
-export { addToWishlist, removeFromWishlist };
+// Get user wishlist
+const getWishlist = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const wishlist = await wishlistServices.getWishlist(userId);
+  return sendResponse(
+    res,
+    200,
+    true,
+    "Wishlist fetched successfully",
+    wishlist,
+  );
+});
+
+export { addToWishlist, removeFromWishlist, getWishlist };

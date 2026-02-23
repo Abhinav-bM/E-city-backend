@@ -1,17 +1,25 @@
 import { sendError } from "../utils/response-handler.js";
 
 /**
- * CSRF Protection Middleware - Double-Submit Cookie Pattern
- * Validates that the X-XSRF-TOKEN header matches the XSRF-TOKEN cookie.
+ * CSRF Protection Middleware — Double-Submit Cookie Pattern
+ *
+ * Step 11: CSRF protection re-enabled. The /api/payment/webhook path is
+ * explicitly excluded because it is called by Razorpay's servers (not a
+ * browser), so it will never have a CSRF cookie to submit. The webhook
+ * is protected instead by HMAC-SHA256 signature verification.
  */
 export const csrfProtection = (req, res, next) => {
-  // ⚠️ TEMPORARY BYPASS FOR TESTING — uncomment below when auth is fully implemented
-  return next();
-
-  /*
-  // Skip CSRF check for GET, HEAD, OPTIONS (safe methods)
+  // Skip CSRF check for safe HTTP methods
   const safeMethods = ["GET", "HEAD", "OPTIONS"];
   if (safeMethods.includes(req.method)) {
+    return next();
+  }
+
+  // Skip CSRF for the Razorpay webhook — protected by webhook signature instead
+  if (
+    req.path === "/api/payment/webhook" ||
+    req.originalUrl.includes("/payment/webhook")
+  ) {
     return next();
   }
 
@@ -20,7 +28,7 @@ export const csrfProtection = (req, res, next) => {
 
   if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
     console.error(
-      `CSRF validation failed. Cookie: ${csrfCookie}, Header: ${csrfHeader}`,
+      `[CSRF] Validation failed. Cookie: ${csrfCookie ? "present" : "missing"}, Header: ${csrfHeader ? "present" : "missing"}`,
     );
     return sendError(
       res,
@@ -30,5 +38,4 @@ export const csrfProtection = (req, res, next) => {
   }
 
   next();
-  */
 };

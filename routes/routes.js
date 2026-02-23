@@ -13,7 +13,7 @@ import adminAuthRouter from "./custom_routes/adminAuth-routes.js";
 import orderRouter from "./custom_routes/order-route.js";
 import paymentRouter from "./custom_routes/payment-route.js";
 import returnRouter from "./custom_routes/return-route.js";
-
+import profileRouter from "./custom_routes/user-route.js";
 export const routes = (app) => {
   const router = Router();
 
@@ -29,6 +29,7 @@ export const routes = (app) => {
   router.use("/order", orderRouter());
   router.use("/payment", paymentRouter());
   router.use("/return", returnRouter);
+  router.use("/profile", profileRouter());
 
   // Mount product LAST because it has catch-all /:slug route
   router.use("/product", productRouter());

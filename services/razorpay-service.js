@@ -21,8 +21,8 @@ const createRazorpayOrder = async (amount, receipt) => {
 };
 
 /**
- * verifyPaymentSignature — validates Razorpay's callback signature
- * Ensures the payment wasn't tampered with.
+ * verifyPaymentSignature — validates Razorpay's callback signature.
+ * Ensures the payment wasn't tampered with on the client side.
  */
 const verifyPaymentSignature = ({
   razorpay_order_id,
@@ -35,7 +35,53 @@ const verifyPaymentSignature = ({
     .update(body)
     .digest("hex");
 
-  return expectedSignature === razorpay_signature;
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(expectedSignature, "utf8"),
+      Buffer.from(razorpay_signature, "utf8"),
+    );
+  } catch (err) {
+    return false;
+  }
 };
 
-export { createRazorpayOrder, verifyPaymentSignature };
+/**
+ * verifyWebhookSignature — validates Razorpay's webhook signature.
+ * Uses a DEDICATED webhook secret (not the API key secret) for
+ * least-privilege separation. RAZORPAY_WEBHOOK_SECRET must be set as its
+ * own env variable matching the secret configured in the Razorpay dashboard.
+ */
+const verifyWebhookSignature = (rawBody, signature) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error(
+      "FATAL: RAZORPAY_WEBHOOK_SECRET is not configured. " +
+        "Set it in .env and in the Razorpay dashboard webhook settings.",
+    );
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", secret)
+    .update(rawBody)
+    .digest("hex");
+
+  // Prevent timing attacks with constant-time comparison
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(expectedSignature, "utf8"),
+      Buffer.from(signature, "utf8"),
+    );
+  } catch (err) {
+    // Fails safely if lengths differ (prevents length oracle attacks)
+    return false;
+  }
+};
+
+// Export the razorpay SDK instance so payment-controller can use
+// razorpay.payments.fetch() for server-to-server cross-verification
+export {
+  razorpay,
+  createRazorpayOrder,
+  verifyPaymentSignature,
+  verifyWebhookSignature,
+};

@@ -37,34 +37,43 @@ const createOrder = async ({
 
     // ── Quantity-based (New) stock check ─────────────────────────────────────
     if (variant.inventoryType !== "Unique") {
-      // Re-fetch to get current stock (cart population uses a ref, may be stale)
-      const freshVariant = await PRODUCT_VARIANT.findById(variant._id);
-      if (!freshVariant || freshVariant.stock < quantity) {
+      // Atomically decrement stock to prevent race conditions (overselling)
+      const updatedVariant = await PRODUCT_VARIANT.findOneAndUpdate(
+        { _id: variant._id, stock: { $gte: quantity } },
+        { $inc: { stock: -quantity } },
+        { new: true },
+      );
+      if (!updatedVariant) {
+        // Fetch current stock to give a helpful error message
+        const freshVariant = await PRODUCT_VARIANT.findById(variant._id);
         throw new Error(
           `"${variant.baseProductId?.title || "A product"}" only has ${freshVariant?.stock ?? 0} units left.`,
         );
       }
-      // Deduct stock immediately
-      freshVariant.stock -= quantity;
-      await freshVariant.save();
     }
 
     // ── Unique-item stock check + reservation ────────────────────────────────
     let inventoryUnitId = null;
     if (variant.inventoryType === "Unique") {
-      const unit = await INVENTORY_UNIT.findOne({
-        productVariantId: variant._id,
-        status: "Available",
-        isArchived: false,
-      });
+      // Step 7: Atomic reservation — a single findOneAndUpdate with the
+      // status:"Available" filter acts as the lock. Two concurrent requests
+      // will both attempt this update, but MongoDB guarantees only one succeeds.
+      // The previous findOne+save pattern had a race condition where both
+      // could read "Available" before either wrote "Reserved".
+      const unit = await INVENTORY_UNIT.findOneAndUpdate(
+        {
+          productVariantId: variant._id,
+          status: "Available",
+          isArchived: false,
+        },
+        { $set: { status: "Reserved", orderId: "pending" } },
+        { new: true },
+      );
       if (!unit) {
         throw new Error(
           `"${variant.baseProductId?.title || "A product"}" is no longer available.`,
         );
       }
-      unit.status = "Reserved";
-      unit.orderId = "pending"; // will update after order is saved
-      await unit.save();
       inventoryUnitId = unit._id;
     }
 
@@ -224,8 +233,123 @@ const updateOrderStatus = async (orderId, newStatus) => {
   return order;
 };
 
+/**
+ * createDirectOrder — places an order from the user's active direct items buffer.
+ */
+const createDirectOrder = async ({
+  userId,
+  shippingAddress,
+  paymentMethod = "COD",
+  notes,
+  directItems,
+}) => {
+  if (!directItems || !Array.isArray(directItems) || directItems.length === 0) {
+    throw new Error("No items provided for direct checkout.");
+  }
+
+  const orderItems = [];
+  let subtotal = 0;
+
+  for (const item of directItems) {
+    const variant = await PRODUCT_VARIANT.findById(
+      item.productVariantId,
+    ).populate("baseProductId", "title");
+    if (!variant) throw new Error("A product selected is no longer available.");
+
+    const priceAtOrder = variant.sellingPrice;
+    const quantity = item.quantity;
+
+    // ── Quantity-based stock check ──────────────────────────────────────────
+    if (
+      variant.inventoryType !== "Quantity" &&
+      variant.inventoryType !== "Unique"
+    ) {
+      variant.inventoryType = "Quantity"; // Default failsafe
+    }
+
+    if (variant.inventoryType !== "Unique") {
+      // Atomically decrement stock to prevent race conditions (overselling)
+      const updatedVariant = await PRODUCT_VARIANT.findOneAndUpdate(
+        { _id: variant._id, stock: { $gte: quantity } },
+        { $inc: { stock: -quantity } },
+        { new: true },
+      );
+      if (!updatedVariant) {
+        // Fetch current stock to give a helpful error message
+        const freshVariant = await PRODUCT_VARIANT.findById(variant._id);
+        throw new Error(
+          `"${variant.baseProductId?.title || "A product"}" only has ${freshVariant?.stock ?? 0} units left.`,
+        );
+      }
+    }
+
+    // ── Unique-item stock check + reservation ────────────────────────────────
+    let inventoryUnitId = null;
+    if (variant.inventoryType === "Unique") {
+      // Step 7: Same atomic fix as createOrder — prevents race condition
+      const unit = await INVENTORY_UNIT.findOneAndUpdate(
+        {
+          productVariantId: variant._id,
+          status: "Available",
+          isArchived: false,
+        },
+        { $set: { status: "Reserved", orderId: "pending" } },
+        { new: true },
+      );
+      if (!unit) {
+        throw new Error(
+          `"${variant.baseProductId?.title || "A product"}" is no longer available.`,
+        );
+      }
+      inventoryUnitId = unit._id;
+    }
+
+    orderItems.push({
+      productVariantId: variant._id,
+      baseProductId: variant.baseProductId?._id || variant.baseProductId,
+      inventoryUnitId,
+      quantity,
+      priceAtOrder,
+      title: variant.baseProductId?.title || "",
+      attributes: variant.attributes || {},
+    });
+
+    subtotal += priceAtOrder * quantity;
+  }
+
+  const shippingFee = 0;
+  const totalAmount = subtotal + shippingFee;
+
+  const order = await ORDER.create({
+    userId,
+    items: orderItems,
+    shippingAddress,
+    paymentMethod,
+    paymentStatus: "Pending",
+    orderStatus: "Placed",
+    subtotal,
+    shippingFee,
+    totalAmount,
+    notes: notes || "",
+  });
+
+  const uniqueUnitIds = orderItems
+    .filter((i) => i.inventoryUnitId)
+    .map((i) => i.inventoryUnitId);
+
+  if (uniqueUnitIds.length > 0) {
+    await INVENTORY_UNIT.updateMany(
+      { _id: { $in: uniqueUnitIds } },
+      { $set: { orderId: order._id.toString() } },
+    );
+  }
+
+  return order;
+};
+
 export default {
   createOrder,
+  createDirectOrder,
   getOrdersByUser,
   getAllOrders,
   getOrderById,

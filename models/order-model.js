@@ -92,4 +92,10 @@ const OrderSchema = new mongoose.Schema(
 
 const ORDER = mongoose.model("Order", OrderSchema);
 
+// Step 9: Sparse unique indexes — prevent two orders from sharing the same
+// Razorpay IDs. sparse:true means null/undefined values are excluded, so
+// COD orders (which never get a razorpayOrderId) are unaffected.
+OrderSchema.index({ razorpayOrderId: 1 }, { unique: true, sparse: true });
+OrderSchema.index({ razorpayPaymentId: 1 }, { unique: true, sparse: true });
+
 export default ORDER;

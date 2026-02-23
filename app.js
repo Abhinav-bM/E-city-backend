@@ -10,6 +10,28 @@ import morgan from "morgan";
 
 dotenv.config();
 
+// Step 12: Startup env validation.
+// The server refuses to start if any critical secret is missing.
+// This prevents silently running in production with placeholder values,
+// broken JWT signing, or misconfigured payment webhook verification.
+const REQUIRED_ENV = [
+  "RAZORPAY_ID_KEY",
+  "RAZORPAY_SECRET_KEY",
+  "RAZORPAY_WEBHOOK_SECRET",
+  "JWT_ACCESS_SECRET",
+  "JWT_REFRESH_SECRET",
+  "MONGODB_URI",
+  "SESSION_SECRET",
+];
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    throw new Error(
+      `FATAL: Missing required environment variable: "${key}". ` +
+        `Server cannot start without it. Check your .env file.`,
+    );
+  }
+}
+
 const app = express();
 app.use(morgan("dev"));
 
@@ -45,11 +67,21 @@ app.use(
 //same use of body parser. its built in express itself.
 app.use(express.urlencoded({ extended: false }));
 // for parsing json to js object.
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString();
+    },
+  }),
+);
 
 import { errorMiddleware } from "./middlewares/error-middleware.js";
+import { startCleanupJob } from "./services/cleanup-service.js";
 
 routes(app);
+
+// Start background cleanup jobs
+startCleanupJob();
 
 // Default route - homepage
 app.get("/", (req, res) => {

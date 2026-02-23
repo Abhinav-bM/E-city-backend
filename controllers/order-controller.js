@@ -41,19 +41,24 @@ const placeOrder = asyncHandler(async (req, res) => {
 
   // If Razorpay — create a Razorpay order and return the details
   if (paymentMethod === "Razorpay") {
-    const razorpayOrder = await createRazorpayOrder(
-      order.totalAmount,
-      order._id.toString(),
-    );
-    order.razorpayOrderId = razorpayOrder.id;
-    await order.save();
+    // Step 6: Guard — if this is a reused existing order already having a
+    // razorpayOrderId, return it as-is. Creating a new one would orphan the
+    // first on Razorpay's side (the client would have no way to pay it).
+    if (!order.razorpayOrderId) {
+      const razorpayOrder = await createRazorpayOrder(
+        order.totalAmount,
+        order._id.toString(),
+      );
+      order.razorpayOrderId = razorpayOrder.id;
+      await order.save();
+    }
 
     return sendResponse(res, 201, true, "Order created. Complete payment.", {
       ...order.toObject(),
       razorpayOrder: {
-        id: razorpayOrder.id,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
+        id: order.razorpayOrderId,
+        amount: Math.round(order.totalAmount * 100),
+        currency: "INR",
         keyId: process.env.RAZORPAY_ID_KEY,
       },
     });
@@ -142,8 +147,83 @@ const downloadInvoice = asyncHandler(async (req, res) => {
   generateInvoicePDF(order, res);
 });
 
+// ── Customer: place direct order (buy now) ──────────────────────────────────
+const placeDirectOrder = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const {
+    shippingAddress,
+    paymentMethod,
+    notes,
+    existingOrderId,
+    directItems,
+  } = req.body;
+
+  if (!shippingAddress && !existingOrderId) {
+    return sendError(res, 400, "Shipping address is required.");
+  }
+
+  let order;
+
+  if (existingOrderId) {
+    order = await (
+      await import("../models/order-model.js")
+    ).default.findById(existingOrderId);
+    // If order exists, belongs to user, and is still pending, we reuse it.
+    // Otherwise, it might have been marked Failed/Cancelled, so we create a new one.
+    if (
+      !order ||
+      order.userId.toString() !== userId ||
+      order.paymentStatus !== "Pending"
+    ) {
+      order = null;
+    }
+  }
+
+  if (!order) {
+    order = await orderService.createDirectOrder({
+      userId,
+      shippingAddress,
+      paymentMethod: paymentMethod || "COD",
+      notes,
+      directItems,
+    });
+  }
+
+  // If Razorpay — create a Razorpay order and return the details
+  if (paymentMethod === "Razorpay") {
+    // Step 6: Guard — reuse existing razorpayOrderId if already set
+    if (!order.razorpayOrderId) {
+      const razorpayOrder = await createRazorpayOrder(
+        order.totalAmount,
+        order._id.toString(),
+      );
+      order.razorpayOrderId = razorpayOrder.id;
+      await order.save();
+    }
+
+    return sendResponse(res, 201, true, "Order created. Complete payment.", {
+      ...order.toObject(),
+      razorpayOrder: {
+        id: order.razorpayOrderId,
+        amount: Math.round(order.totalAmount * 100),
+        currency: "INR",
+        keyId: process.env.RAZORPAY_ID_KEY,
+      },
+    });
+  }
+
+  return sendResponse(
+    res,
+    201,
+    true,
+    "Direct order placed successfully.",
+    order,
+  );
+});
+
 export {
   placeOrder,
+  placeDirectOrder,
   getMyOrders,
   getAllOrders,
   getOrderDetail,

@@ -5,20 +5,29 @@ import {
   listInventory,
   deleteInventoryUnit,
 } from "../../controllers/inventory-controller.js";
+import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
+import { validateObjectId } from "../../middlewares/validate-id-middleware.js";
 
 const inventoryRouter = () => {
   const router = Router();
-  // Admin: Add specific unit to a product variant
-  router.post("/add", addInventoryUnit);
 
-  // Admin: Get inventory for a specific variant
-  router.get("/variant/:variantId", getVariantInventory);
-
-  // Admin: List/Search all inventory
-  router.get("/list", listInventory);
-
-  // Admin: Delete/Archive inventory unit
-  router.delete("/delete/:id", deleteInventoryUnit);
+  // All inventory routes are admin-only
+  router.post("/add", requireAuth, requireAdmin, addInventoryUnit);
+  router.get(
+    "/variant/:id",
+    requireAuth,
+    requireAdmin,
+    validateObjectId(),
+    getVariantInventory,
+  );
+  router.get("/list", requireAuth, requireAdmin, listInventory);
+  router.delete(
+    "/delete/:id",
+    requireAuth,
+    requireAdmin,
+    validateObjectId(),
+    deleteInventoryUnit,
+  );
 
   return router;
 };

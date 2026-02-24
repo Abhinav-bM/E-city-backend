@@ -15,19 +15,30 @@ export const requireAuth = (req, res, next) => {
     }
 
     if (!token) {
-      // [TEMPORARY MOCK FOR CART TESTING]
-      // return res.status(401).json({ message: "Missing access token" });
-      req.user = { userId: "65b2d75945842866fe6e033e" };
-      return next();
+      return res
+        .status(401)
+        .json({ success: false, message: "Authentication required." });
     }
 
     const payload = verifyAccessToken(token); // throws on invalid/expired
     req.user = payload;
     next();
   } catch (err) {
-    // [TEMPORARY MOCK FOR CART TESTING]
-    // return res.status(401).json({ message: "Invalid or expired access token" });
-    req.user = { userId: "65b2d75945842866fe6e033e" };
-    return next();
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid or expired access token." });
   }
+};
+
+/**
+ * Middleware to ensure the authenticated user has the 'admin' role.
+ * Must be used after requireAuth.
+ */
+export const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res
+      .status(403)
+      .json({ success: false, message: "Admin access required." });
+  }
+  next();
 };

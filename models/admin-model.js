@@ -22,6 +22,10 @@ const adminSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  refreshTokenVersion: {
+    type: Number,
+    default: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -31,7 +35,7 @@ const adminSchema = new mongoose.Schema({
 // Hash password before saving
 adminSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 

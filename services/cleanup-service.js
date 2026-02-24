@@ -1,6 +1,7 @@
 import ORDER from "../models/order-model.js";
 import { PRODUCT_VARIANT } from "../models/product-model.js";
 import INVENTORY_UNIT from "../models/inventory-model.js";
+import logger from "../utils/logger.js";
 
 /**
  * Periodically scan for Razorpay orders that were created but never paid (abandoned).
@@ -46,20 +47,22 @@ export const cleanupAbandonedOrders = async () => {
         );
       }
 
-      console.log(
-        `[Cleanup] Abandoned Razorpay order ${order._id} cancelled and stock safely restored.`,
-      );
+      logger.info("Abandoned order cancelled and stock restored", {
+        orderId: order._id,
+        razorpayOrderId: order.razorpayOrderId,
+        itemCount: order.items.length,
+      });
     }
   } catch (err) {
-    console.error(`[Cleanup Error] Failed to clean up abandoned orders:`, err);
+    logger.error("Cleanup job failed to clean up abandoned orders", {
+      error: err.message,
+      stack: err.stack,
+    });
   }
 };
 
 export const startCleanupJob = () => {
-  // Run the check every 15 minutes natively in the Node process
   const INTERVAL_MS = 15 * 60 * 1000;
   setInterval(cleanupAbandonedOrders, INTERVAL_MS);
-  console.log(
-    "[Cleanup] Background job started to clean up abandoned Razorpay orders every 15 minutes.",
-  );
+  logger.info("Cleanup job started", { intervalMinutes: 15 });
 };

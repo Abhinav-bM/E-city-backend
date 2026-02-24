@@ -29,7 +29,6 @@ const addItemToCart = async ({
   // STOCK VALIDATION logic
   // 1. Used/Refurbished (Unique Items)
   if (productVariant.inventoryType === "Unique") {
-    // Check InventoryUnit status (enriched by getVariantById)
     if (productVariant.status !== "Available") {
       throw new Error("This exclusive item is no longer available.");
     }
@@ -54,8 +53,32 @@ const addItemToCart = async ({
   }
   // 2. New Items (Quantity Based)
   else {
-    if (productVariant.stock < quantity) {
-      throw new Error(`Only ${productVariant.stock} units available.`);
+    // Validate quantity is a positive integer
+    const qty = parseInt(quantity, 10);
+    if (!Number.isInteger(qty) || qty < 1 || qty > 100) {
+      throw new Error(
+        "Invalid quantity. Must be a whole number between 1 and 100.",
+      );
+    }
+
+    // Check existing cart quantity to prevent accumulation exploit.
+    // A user calling addToCart 10 times with qty=1 should not bypass a stock=5 check.
+    const existingCart = await cartRepository.getCartByUserId(userId);
+    const existingQty = existingCart
+      ? (existingCart.items.find((item) =>
+          item.productVariantId._id
+            ? item.productVariantId._id.toString() ===
+              productVariant._id.toString()
+            : item.productVariantId.toString() ===
+              productVariant._id.toString(),
+        )?.quantity ?? 0)
+      : 0;
+
+    const totalQty = existingQty + qty;
+    if (productVariant.stock < totalQty) {
+      throw new Error(
+        `Only ${productVariant.stock} units available. You already have ${existingQty} in your cart.`,
+      );
     }
   }
 
@@ -63,7 +86,7 @@ const addItemToCart = async ({
     userId,
     productVariant._id,
     quantity,
-    productVariant.sellingPrice, // Lock the price at time of add
+    productVariant.sellingPrice,
   );
   return cart;
 };

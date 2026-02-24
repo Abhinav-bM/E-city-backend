@@ -1,12 +1,12 @@
 import { Router } from "express";
 import brandController from "../../controllers/brand-controller.js";
+import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
 
 const brandRouter = () => {
-  // Ignores passed router to avoid shared state pollution
   const router = Router();
 
-  router.get("/", brandController.getAllBrands);
-  router.post("/", brandController.createBrand);
+  router.get("/", brandController.getAllBrands); // public
+  router.post("/", requireAuth, requireAdmin, brandController.createBrand);
 
   return router;
 };

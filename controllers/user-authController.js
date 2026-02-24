@@ -37,6 +37,9 @@ export const sentOtp = asyncHandler(async (req, res) => {
     // await storeOtp(user._id, otp);
     // await sendOtp(phone, otp);
 
+    // ⚠️ SECURITY WARNING: Hardcoded OTP for development only.
+    // MUST be removed before production deployment.
+    // Uncomment the real OTP flow above (generateOTP / storeOtp / sendOtp).
     const otp = "123456";
     otpStore.set(phone, { otp, expires: Date.now() + 5 * 60 * 1000 }); // 5 min expiry
 

@@ -9,13 +9,22 @@ const errorMiddleware = (err, req, res, next) => {
 
   // Handle Mongoose Validation Errors
   if (err.name === "ValidationError") {
-    return sendError(res, 400, "Validation Error", err.message);
+    return sendError(res, 400, "Validation failed.", err.message);
+  }
+
+  // Handle Mongoose CastError — malformed ObjectId passed in params
+  if (err.name === "CastError" && err.kind === "ObjectId") {
+    return sendError(res, 400, "Invalid ID format.");
   }
 
   const statusCode = err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
+  // In production, never leak raw error objects for 500s
+  const message =
+    statusCode === 500
+      ? "An internal server error occurred."
+      : err.message || "An error occurred.";
 
-  return sendError(res, statusCode, message, err);
+  return sendError(res, statusCode, message);
 };
 
 export { errorMiddleware };

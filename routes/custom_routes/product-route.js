@@ -1,7 +1,7 @@
 /*
- * PENDING
- * Add authentication in admin side
- * Product edit option
+ * Auth guards applied:
+ * - Public: GET / (listing) and GET /:slug (product detail)
+ * - Admin-only: POST (add), PUT (update), DELETE (delete)
  */
 
 import { Router } from "express";
@@ -13,19 +13,33 @@ import {
   getProductByBaseId,
   updateProduct,
 } from "../../controllers/product-controller.js";
+import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
+import { validateObjectId } from "../../middlewares/validate-id-middleware.js";
 
 const productRouter = () => {
   const router = Router();
 
-  // GET routes first - most specific to least specific
-  router.get("/", getAllProducts); // List all products
-  router.get("/base/:id", getProductByBaseId); // Get product by base ID (for editing)
-  router.get("/:slug", getProductDetails); // Get specific product by slug
+  // ── Public GET routes ─────────────────────────────────────────────────────
+  router.get("/", getAllProducts);
+  router.get("/base/:id", validateObjectId(), getProductByBaseId);
+  router.get("/:slug", getProductDetails);
 
-  // POST/DELETE routes
-  router.post("/", addProduct);
-  router.put("/:id", updateProduct); // Update product
-  router.delete("/:id", deleteProduct); // Soft delete endpoint
+  // ── Admin-only mutation routes ────────────────────────────────────────────
+  router.post("/", requireAuth, requireAdmin, addProduct);
+  router.put(
+    "/:id",
+    requireAuth,
+    requireAdmin,
+    validateObjectId(),
+    updateProduct,
+  );
+  router.delete(
+    "/:id",
+    requireAuth,
+    requireAdmin,
+    validateObjectId(),
+    deleteProduct,
+  );
 
   return router;
 };

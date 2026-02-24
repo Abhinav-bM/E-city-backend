@@ -3,6 +3,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import cors from "cors";
+import mongoSanitize from "express-mongo-sanitize";
 import { connectDB } from "./config/database-config.js";
 import { routes } from "./routes/routes.js";
 import { csrfProtection } from "./middlewares/csrf-middleware.js";
@@ -65,15 +66,21 @@ app.use(
   }),
 );
 //same use of body parser. its built in express itself.
-app.use(express.urlencoded({ extended: false }));
+// Explicit 10kb limit prevents large-body DoS attacks.
+app.use(express.urlencoded({ limit: "10kb", extended: false }));
 // for parsing json to js object.
 app.use(
   express.json({
+    limit: "10kb",
     verify: (req, res, buf) => {
       req.rawBody = buf.toString();
     },
   }),
 );
+
+// Sanitize all incoming data to remove MongoDB operator injection ($, .)
+// This protects req.body, req.params, and req.query globally.
+app.use(mongoSanitize());
 
 import { errorMiddleware } from "./middlewares/error-middleware.js";
 import { startCleanupJob } from "./services/cleanup-service.js";

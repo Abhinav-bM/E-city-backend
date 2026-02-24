@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import mongoose from "mongoose";
 import ORDER from "../models/order-model.js";
 import { PRODUCT_VARIANT } from "../models/product-model.js";
@@ -95,15 +96,18 @@ const issueRazorpayRefund = async ({
       amount: amountPaise,
       notes: { reason, orderId: orderId.toString() },
     });
-    console.log(
-      `[Refund] Issued refund ${refund.id} for payment ${razorpay_payment_id}`,
-    );
+    logger.info("Refund issued", {
+      refundId: refund.id,
+      razorpayPaymentId: razorpay_payment_id,
+      amountPaise,
+      reason,
+    });
     return refund;
   } catch (err) {
-    console.error(
-      `[Refund] FAILED to refund payment ${razorpay_payment_id}:`,
-      err.message,
-    );
+    logger.error("Refund failed", {
+      razorpayPaymentId: razorpay_payment_id,
+      error: err.message,
+    });
     return null;
   }
 };
@@ -409,10 +413,10 @@ const verifyPayment = asyncHandler(async (req, res) => {
       { $set: { items: [], totalItems: 0, subtotal: 0 } },
     );
   } catch (cartErr) {
-    console.error(
-      "[verifyPayment] Cart clear failed (non-critical):",
-      cartErr.message,
-    );
+    logger.warn("Cart clear failed after payment verification (non-critical)", {
+      userId: order?.userId,
+      error: cartErr.message,
+    });
   }
 
   return sendResponse(res, 200, true, "Payment verified successfully.", order);
@@ -492,10 +496,12 @@ const paymentWebhook = asyncHandler(async (req, res) => {
 
     // Amount sanity check before committing
     if (razorpay_amount !== Math.round(orderForCheck.totalAmount * 100)) {
-      console.error(
-        `[Webhook] AMOUNT MISMATCH for ${razorpay_order_id}. ` +
-          `Expected: ${Math.round(orderForCheck.totalAmount * 100)} paise, Got: ${razorpay_amount} paise.`,
-      );
+      logger.error("Payment amount mismatch detected", {
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+        expectedPaise: Math.round(orderForCheck.totalAmount * 100),
+        receivedPaise: razorpay_amount,
+      });
       await PaymentLog.create({
         orderId: orderForCheck._id,
         razorpayOrderId: razorpay_order_id,
@@ -549,10 +555,10 @@ const paymentWebhook = asyncHandler(async (req, res) => {
           { $set: { items: [], totalItems: 0, subtotal: 0 } },
         );
       } catch (cartErr) {
-        console.error(
-          "[Webhook] Cart clear failed (non-critical):",
-          cartErr.message,
-        );
+        logger.warn("Cart clear failed after webhook capture (non-critical)", {
+          userId: order?.userId,
+          error: cartErr.message,
+        });
       }
     }
     // null order → already processed by verifyPayment (idempotent)

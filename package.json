@@ -44,6 +44,7 @@
     "pdfkit": "^0.17.2",
     "razorpay": "^2.9.6",
     "redis": "^4.7.0",
-    "springedge": "^1.0.6"
+    "springedge": "^1.0.6",
+    "winston": "^3.19.0"
   }
 }

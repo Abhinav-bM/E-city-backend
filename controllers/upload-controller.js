@@ -1,21 +1,26 @@
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { sendResponse, sendError } from "../utils/response-handler.js";
 import { asyncHandler } from "../utils/async-handler.js";
+import logger from "../utils/logger.js";
 
 const uploadImage = asyncHandler(async (req, res) => {
-  // Check if file is present
   if (!req.file) {
-    console.error("Upload failed: No file in request");
+    logger.warn("Upload attempt with no file in request", {
+      ip: req.ip,
+      userId: req.user?.userId,
+    });
     return sendError(res, 400, "No image file provided");
   }
 
   const localFilePath = req.file.path;
 
-  // Upload to Cloudinary
   const cloudinaryResponse = await uploadOnCloudinary(localFilePath);
 
   if (!cloudinaryResponse) {
-    console.error("Cloudinary upload failed for file:", localFilePath);
+    logger.error("Cloudinary upload failed", {
+      userId: req.user?.userId,
+      file: req.file.originalname,
+    });
     return sendError(res, 500, "Failed to upload image to cloud");
   }
 

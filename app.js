@@ -4,11 +4,13 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import cors from "cors";
+import mongoose from "mongoose";
 import mongoSanitize from "express-mongo-sanitize";
 import { connectDB } from "./config/database-config.js";
 import { routes } from "./routes/routes.js";
 import { csrfProtection } from "./middlewares/csrf-middleware.js";
 import { globalLimiter } from "./middlewares/rate-limit-middleware.js";
+import logger from "./utils/logger.js";
 import morgan from "morgan";
 
 dotenv.config();
@@ -120,6 +122,56 @@ app.use(errorMiddleware);
 
 // starting server
 const port = process.env.PORT || 5000;
-app.listen(port, () => {
-  console.log(`Server started on : http://localhost:${port}`);
+const server = app.listen(port, () => {
+  logger.info(`Server started`, {
+    port,
+    env: process.env.NODE_ENV || "development",
+  });
+});
+
+// ─── Graceful Shutdown ───────────────────────────────────────────────────────
+// Called on SIGTERM (Kubernetes, PM2 restart) and SIGINT (Ctrl+C).
+// Stops accepting new connections, waits for in-flight requests to finish,
+// then closes the DB connection before exiting.
+async function gracefulShutdown(signal) {
+  logger.info(`${signal} received — starting graceful shutdown`);
+  server.close(async () => {
+    try {
+      await mongoose.connection.close();
+      logger.info("MongoDB connection closed. Exiting.");
+      process.exit(0);
+    } catch (err) {
+      logger.error("Error during graceful shutdown", { error: err.message });
+      process.exit(1);
+    }
+  });
+  // Force-kill if shutdown takes longer than 10 seconds
+  setTimeout(() => {
+    logger.error("Graceful shutdown timed out — forcing exit");
+    process.exit(1);
+  }, 10_000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// ─── Unhandled Rejection Safety Net ─────────────────────────────────────────
+// Catches unhandled promise rejections (e.g. async code outside asyncHandler).
+// Logs the reason but does NOT exit — keeps the server alive.
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error("Unhandled Promise Rejection", {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+});
+
+// ─── Uncaught Exception Safety Net ───────────────────────────────────────────
+// Catches synchronous exceptions that escaped all try/catch blocks.
+// MUST exit — the process state is potentially corrupt after an uncaught exception.
+process.on("uncaughtException", (err) => {
+  logger.error("Uncaught Exception — PROCESS EXITING", {
+    error: err.message,
+    stack: err.stack,
+  });
+  process.exit(1);
 });

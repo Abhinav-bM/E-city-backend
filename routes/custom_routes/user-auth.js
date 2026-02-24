@@ -15,13 +15,22 @@ import {
 } from "../../utils/validation-schemas.js";
 
 import { requireAuth } from "../../middlewares/auth.js";
+import {
+  otpLimiter,
+  authLimiter,
+} from "../../middlewares/rate-limit-middleware.js";
 
 const userRouter = () => {
   const router = Router();
   router.get("/me", requireAuth, getMe);
 
-  router.post("/sent-otp", validateRequest(sendOtpSchema), sentOtp);
-  router.post("/verify-otp", validateRequest(verifyOtpSchema), verifyOtp);
+  router.post("/sent-otp", otpLimiter, validateRequest(sendOtpSchema), sentOtp);
+  router.post(
+    "/verify-otp",
+    authLimiter,
+    validateRequest(verifyOtpSchema),
+    verifyOtp,
+  );
   router.post("/refresh", refresh);
   router.post("/logout", logout);
   router.get("/csrf", getCsrfToken);

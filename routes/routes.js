@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { globalLimiter } from "../middlewares/rate-limit-middleware.js";
 
 // All routes from the custom_routes folder
 import productRouter from "./custom_routes/product-route.js";
@@ -14,6 +15,7 @@ import orderRouter from "./custom_routes/order-route.js";
 import paymentRouter from "./custom_routes/payment-route.js";
 import returnRouter from "./custom_routes/return-route.js";
 import profileRouter from "./custom_routes/user-route.js";
+
 export const routes = (app) => {
   const router = Router();
 
@@ -39,5 +41,6 @@ export const routes = (app) => {
     res.send("welcome to home page");
   });
 
-  app.use("/api", router);
+  // Apply global rate limiter to ALL /api routes as the chokepoint guard
+  app.use("/api", globalLimiter, router);
 };

@@ -7,10 +7,11 @@ import {
   getCsrfAdminToken,
 } from "../../controllers/admin-authController.js";
 import { requireAuth } from "../../middlewares/auth.js";
+import { authLimiter } from "../../middlewares/rate-limit-middleware.js";
 
 const adminAuthRouter = () => {
   const router = Router();
-  router.post("/login", login);
+  router.post("/login", authLimiter, login);
   router.post("/refresh", refresh);
   router.post("/logout", logout);
   router.get("/me", requireAuth, getMe);

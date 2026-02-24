@@ -21,7 +21,6 @@ const otpStore = new Map();
 
 // login with otp
 export const sentOtp = asyncHandler(async (req, res) => {
-  console.log("Request Body:", req.body); // Debugging line
   const { phone } = req.body;
   if (!phone) return sendError(res, 400, "Phone number required");
 

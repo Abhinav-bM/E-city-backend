@@ -18,15 +18,12 @@ const createProductVariant = async (variantObj) => {
 
 // Get base product with all its variants (by baseProductId)
 const getBaseProductWithVariants = async (baseProductId) => {
-  console.log(baseProductId);
   const baseProductDoc = await BASE_PRODUCT.findById(baseProductId);
   // .lean();
   const variants = await PRODUCT_VARIANT.find({ baseProductId });
 
   const defaultVariant = variants.find((v) => v.isDefault);
   // .lean();
-
-  console.log(baseProductDoc?.images);
 
   const basicDatas = {
     price: defaultVariant?.price || 0,

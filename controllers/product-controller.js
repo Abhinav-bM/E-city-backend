@@ -5,7 +5,6 @@ import { asyncHandler } from "../utils/async-handler.js";
 // Create product with variants
 const addProduct = asyncHandler(async (req, res) => {
   const productData = req.body;
-  console.log(productData);
   const productDetails = await productServices.addProduct(productData);
   return sendResponse(res, 201, true, "Product added successfully", {
     productDetails,

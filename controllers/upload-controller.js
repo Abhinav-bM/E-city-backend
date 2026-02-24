@@ -9,7 +9,6 @@ const uploadImage = asyncHandler(async (req, res) => {
     return sendError(res, 400, "No image file provided");
   }
 
-  console.log("Uploading file:", req.file.path);
   const localFilePath = req.file.path;
 
   // Upload to Cloudinary
@@ -20,7 +19,6 @@ const uploadImage = asyncHandler(async (req, res) => {
     return sendError(res, 500, "Failed to upload image to cloud");
   }
 
-  console.log("Upload successful:", cloudinaryResponse.secure_url);
   return sendResponse(res, 200, true, "Image uploaded successfully", {
     url: cloudinaryResponse.secure_url,
     publicId: cloudinaryResponse.public_id,

@@ -28,8 +28,13 @@ export const login = asyncHandler(async (req, res) => {
     return sendError(res, 401, "Invalid credentials");
   }
 
-  const payload = { userId: admin._id, role: "admin" };
-  const accessToken = createAccessToken(payload);
+  // Embed the current tokenVersion so logout can increment and invalidate all sessions.
+  const payload = {
+    userId: admin._id,
+    role: "admin",
+    version: admin.refreshTokenVersion,
+  };
+  const accessToken = createAccessToken({ userId: admin._id, role: "admin" });
   const refreshToken = createRefreshToken(payload);
 
   setRefreshTokenCookie(
@@ -70,8 +75,21 @@ export const refresh = asyncHandler(async (req, res) => {
     return sendError(res, 401, "Admin not found or inactive");
   }
 
-  const newPayload = { userId: admin._id, role: "admin" };
-  const newAccessToken = createAccessToken(newPayload);
+  // Version check — if admin logged out, refreshTokenVersion was incremented.
+  // Any stolen tokens with an old version are now invalid.
+  if (payload.version !== admin.refreshTokenVersion) {
+    return sendError(res, 401, "Session expired. Please log in again.");
+  }
+
+  const newPayload = {
+    userId: admin._id,
+    role: "admin",
+    version: admin.refreshTokenVersion,
+  };
+  const newAccessToken = createAccessToken({
+    userId: admin._id,
+    role: "admin",
+  });
   const newRefreshToken = createRefreshToken(newPayload);
 
   setRefreshTokenCookie(
@@ -89,6 +107,20 @@ export const refresh = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
+  // Increment refreshTokenVersion to invalidate all existing refresh tokens.
+  // Any stolen cookie with the old version will fail the next refresh check.
+  const tokenCookie = req.cookies?.adminRefreshToken;
+  if (tokenCookie) {
+    try {
+      const payload = verifyRefreshToken(tokenCookie);
+      await Admin.findByIdAndUpdate(payload.userId, {
+        $inc: { refreshTokenVersion: 1 },
+      });
+    } catch {
+      // Token already invalid — still clear cookies
+    }
+  }
+
   res.clearCookie("adminRefreshToken", { path: "/api/admin/auth/refresh" });
   res.clearCookie("adminAccessToken", { path: "/" });
   res.clearCookie("XSRF-TOKEN", { path: "/" });

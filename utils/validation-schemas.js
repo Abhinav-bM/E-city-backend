@@ -106,19 +106,16 @@ export const removeCartItemSchema = Joi.object({
 // ─── Order schemas ────────────────────────────────────────────────────────────
 
 const shippingAddressSchema = Joi.object({
-  fullName: Joi.string().trim().min(2).max(100).required(),
+  firstName: Joi.string().trim().min(1).max(100).required(),
+  lastName: Joi.string().trim().max(100).optional().allow(""),
   phone: Joi.string()
     .length(10)
     .pattern(/^[0-9]+$/)
     .required(),
-  addressLine1: Joi.string().trim().min(5).max(200).required(),
-  addressLine2: Joi.string().trim().max(200).optional().allow(""),
+  address: Joi.string().trim().min(5).max(400).required(),
   city: Joi.string().trim().min(2).max(100).required(),
-  state: Joi.string().trim().min(2).max(100).required(),
-  pincode: Joi.string()
-    .length(6)
-    .pattern(/^[0-9]+$/)
-    .required(),
+  state: Joi.string().trim().max(100).optional().allow(""),
+  zip: Joi.string().trim().max(10).optional().allow(""),
   country: Joi.string().trim().min(2).max(100).optional().default("India"),
 }).unknown(true); // allow address _id if re-used
 

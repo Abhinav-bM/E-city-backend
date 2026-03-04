@@ -282,7 +282,7 @@ const getOrderById = async (orderId) => {
  * Stock revert on cancellation is wrapped in a transaction to prevent
  * partial state (order Cancelled but stock not restored).
  */
-const updateOrderStatus = async (orderId, newStatus) => {
+const updateOrderStatus = async (orderId, newStatus, extraData = {}) => {
   const order = await ORDER.findById(orderId);
   if (!order) throw new Error("Order not found.");
 
@@ -294,6 +294,25 @@ const updateOrderStatus = async (orderId, newStatus) => {
 
     if (newStatus === "Delivered" && order.paymentMethod === "COD") {
       order.paymentStatus = "Paid";
+    }
+
+    if (newStatus === "Shipped") {
+      if (extraData.trackingId) {
+        order.trackingId = extraData.trackingId;
+      }
+      
+      // Strict IMEI Verification for Backend
+      const requiredImeiCount = order.items.filter((i) => i.inventoryUnitId).length;
+      
+      if (requiredImeiCount > 0) {
+         if (!extraData.shippedImeis || !Array.isArray(extraData.shippedImeis) || extraData.shippedImeis.length !== requiredImeiCount) {
+             throw new Error(`Strict Validation Failed: Exactly ${requiredImeiCount} IMEI/Serial numbers are required to ship this order.`);
+         }
+      }
+
+      if (extraData.shippedImeis && Array.isArray(extraData.shippedImeis)) {
+        order.shippedImeis = extraData.shippedImeis;
+      }
     }
 
     await order.save();

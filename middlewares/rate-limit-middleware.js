@@ -14,12 +14,24 @@ const rateLimitHandler = (req, res) => {
 /**
  * Global limiter — applies to all /api routes.
  * Protects against general API scraping and flooding.
- * 100 requests per 15 minutes per IP.
+ * 1500 requests per 15 minutes per IP (loose limit for public data/search).
  */
 export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 2000,
   standardHeaders: true, // Return rate limit info in RateLimit-* headers
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
+/**
+ * Mutation limiter — for user-specific actions (Cart, Wishlist, Profile).
+ * 200 requests per 15 minutes per IP.
+ */
+export const mutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 200,
+  standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
 });

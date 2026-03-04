@@ -87,6 +87,10 @@ const OrderSchema = new mongoose.Schema(
 
     notes: { type: String }, // optional customer notes
 
+    // Tracking and Fulfillment
+    trackingId: { type: String },
+    shippedImeis: { type: [String], default: [] },
+
     // Flag: has stock been atomically deducted for this order?
     // true  → COD orders (deducted at creation) or Razorpay orders after verified payment.
     // false → Razorpay orders that are still pending payment (stock not yet touched).

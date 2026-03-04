@@ -104,7 +104,7 @@ const getOrderDetail = asyncHandler(async (req, res) => {
 // ── Admin: update order status ────────────────────────────────────────────────
 const updateStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, trackingId, shippedImeis } = req.body;
 
   const validStatuses = [
     "Placed",
@@ -123,7 +123,18 @@ const updateStatus = asyncHandler(async (req, res) => {
     );
   }
 
-  const order = await orderService.updateOrderStatus(id, status);
+  if (status === "Shipped" && !trackingId) {
+    return sendError(
+      res,
+      400,
+      "Tracking ID is required when marking an order as Shipped.",
+    );
+  }
+
+  const order = await orderService.updateOrderStatus(id, status, {
+    trackingId,
+    shippedImeis,
+  });
   return sendResponse(res, 200, true, "Order status updated.", order);
 });
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { globalLimiter } from "../middlewares/rate-limit-middleware.js";
+import { globalLimiter, mutationLimiter } from "../middlewares/rate-limit-middleware.js";
 
 // All routes from the custom_routes folder
 import productRouter from "./custom_routes/product-route.js";
@@ -24,14 +24,14 @@ export const routes = (app) => {
   router.use("/admin/auth", adminAuthRouter());
   router.use("/upload", uploadRouter());
   router.use("/category", categoryRouter());
-  router.use("/cart", cartRouter());
-  router.use("/wishlist", wishlistRouter());
+  router.use("/cart", mutationLimiter, cartRouter());
+  router.use("/wishlist", mutationLimiter, wishlistRouter());
   router.use("/inventory", inventoryRouter());
   router.use("/brand", brandRouter());
-  router.use("/order", orderRouter());
-  router.use("/payment", paymentRouter());
+  router.use("/order", mutationLimiter, orderRouter());
+  router.use("/payment", mutationLimiter, paymentRouter());
   router.use("/return", returnRouter);
-  router.use("/profile", profileRouter());
+  router.use("/profile", mutationLimiter, profileRouter());
 
   // Mount product LAST because it has catch-all /:slug route
   router.use("/product", productRouter());

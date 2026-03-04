@@ -3,12 +3,12 @@ import mongoose from "mongoose";
 const returnItemSchema = new mongoose.Schema({
   productVariantId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Product_Variant",
+    ref: "ProductVariant",
     required: true,
   },
   inventoryUnitId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Inventory_Unit",
+    ref: "InventoryUnit",
     required: false, // Only for "Unique" items
   },
   title: { type: String, required: true },
@@ -40,7 +40,7 @@ const returnRequestSchema = new mongoose.Schema(
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "user",
       required: true,
     },
     items: [returnItemSchema],

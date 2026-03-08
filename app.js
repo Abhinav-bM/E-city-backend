@@ -96,7 +96,7 @@ app.use(express.urlencoded({ limit: "10kb", extended: false }));
 // for parsing json to js object.
 app.use(
   express.json({
-    limit: "10kb",
+    limit: "100kb",
     verify: (req, res, buf) => {
       req.rawBody = buf.toString();
     },

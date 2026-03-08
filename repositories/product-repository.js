@@ -280,18 +280,29 @@ const getProductsGroupedByVariant = async (
   // Get wishlist product IDs for lookup (to mark products as wishlisted)
   let wishlistedProductIds = [];
   if (userId) {
-    // Find all wishlist entries where the productId matches any of our base products
+    // Find all wishlist entries where there is a match (not restricted to base productId anymore as we've fixed the schema)
+    // Actually we only need matching variant IDs for our variants.
+    // For efficiency, we first get all variants of these base products, then query the wishlist table.
+    // But since the original code queried first, let's just query all user's wishlists for now or optimize later.
+    // For now: find all wishlist items for this user
     const wishlistedItems = await WISHLIST.find({
       userId,
-      productId: { $in: baseProductIdList }, // $in is MongoDB operator for "match any of these values"
+      // Ideally we would filter by variantId: { $in: variantDocs.map(v => v._id) } but variantDocs is fetched below.
+      // So let's fetch all wishlist variantIds for this user.
     })
-      .select("productId") // Only select productId field
+      .select("variantId") // Only select variantId field
       .lean();
 
     // Convert to array of strings for easy comparison later
-    wishlistedProductIds = wishlistedItems.map((item) =>
-      item.productId.toString(),
-    );
+    wishlistedProductIds = wishlistedItems
+      .map((item) => {
+        // Handle cases where variantId might be populated or null
+        if (!item.variantId) return null;
+        return typeof item.variantId === "object"
+          ? item.variantId.toString()
+          : item.variantId;
+      })
+      .filter(Boolean);
   }
 
   // Fetch ALL variants for the matching base products (not paginated yet)
@@ -398,9 +409,9 @@ const getProductsGroupedByVariant = async (
         ? variant.images
         : base?.images || [];
 
-    // Check if this base product is wishlisted
+    // Check if this specific variant is wishlisted
     const isWishlisted = userId
-      ? wishlistedProductIds.includes(variant.baseProductId.toString())
+      ? wishlistedProductIds.includes(variant._id.toString())
       : false;
 
     // Return the product object with merged base and variant data

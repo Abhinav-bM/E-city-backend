@@ -8,12 +8,12 @@ import { requireAuth } from "../../middlewares/auth.js";
 import { validateRequest } from "../../middlewares/validation-middleware.js";
 import Joi from "joi";
 
-// Inline schema — product_id must be a valid 24-char hex ObjectId
+// Inline schema — variant_id must be a valid 24-char hex ObjectId
 const wishlistItemSchema = Joi.object({
-  product_id: Joi.string().hex().length(24).required().messages({
-    "string.hex": "Invalid product ID.",
-    "string.length": "Invalid product ID length.",
-    "any.required": "product_id is required.",
+  variant_id: Joi.string().hex().length(24).required().messages({
+    "string.hex": "Invalid variant ID.",
+    "string.length": "Invalid variant ID length.",
+    "any.required": "variant_id is required.",
   }),
 });
 

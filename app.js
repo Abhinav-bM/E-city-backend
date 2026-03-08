@@ -39,6 +39,9 @@ for (const key of REQUIRED_ENV) {
 
 const app = express();
 
+// Trust reverse proxy for Secure cookies (Render, Heroku, Vercel etc)
+app.set("trust proxy", 1);
+
 // Security headers — must be first middleware.
 // Sets X-Frame-Options, X-Content-Type-Options, HSTS, and more.
 app.use(helmet());
@@ -83,7 +86,7 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === "production", // HTTPS-only in production
       httpOnly: true, // Prevent JS access to session cookie
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   }),
 );

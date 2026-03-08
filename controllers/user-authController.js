@@ -99,6 +99,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
       phone: user.phone,
       name: user.name,
     },
+    xsrfToken,
   });
 });
 
@@ -129,13 +130,9 @@ export const refresh = asyncHandler(async (req, res) => {
   const xsrfToken = crypto.randomBytes(32).toString("hex");
   setXsrfTokenCookie(res, xsrfToken);
 
-  return sendResponse(
-    res,
-    200,
-    true,
-    "Refresh token refreshed successfully",
-    null,
-  );
+  return sendResponse(res, 200, true, "Refresh token refreshed successfully", {
+    xsrfToken,
+  });
 });
 
 export const logout = asyncHandler(async (req, res) => {
@@ -162,5 +159,7 @@ export const getMe = asyncHandler(async (req, res) => {
 export const getCsrfToken = asyncHandler(async (req, res) => {
   const xsrfToken = crypto.randomBytes(32).toString("hex");
   setXsrfTokenCookie(res, xsrfToken);
-  return sendResponse(res, 200, true, "CSRF token generated successfully");
+  return sendResponse(res, 200, true, "CSRF token generated successfully", {
+    xsrfToken,
+  });
 });

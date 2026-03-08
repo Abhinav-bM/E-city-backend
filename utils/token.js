@@ -47,7 +47,7 @@ export const setAccessTokenCookie = (res, token, name = "accessToken") => {
 
 export const setXsrfTokenCookie = (res, token) => {
   res.cookie("XSRF-TOKEN", token, {
-    httpOnly: false, // Must be readable by frontend JS
+    httpOnly: true, // Hide from document.cookie, frontend uses JSON payload in memory
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",

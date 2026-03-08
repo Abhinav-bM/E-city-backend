@@ -8,13 +8,13 @@ const WishlistSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    productId: {
+    variantId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "BaseProduct",
+      ref: "ProductVariant",
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const WISHLIST = mongoose.model("Wishlist", WishlistSchema);

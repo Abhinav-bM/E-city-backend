@@ -4,7 +4,7 @@
  * - Admin-only: POST (add), PUT (update), DELETE (delete)
  */
 
-import { Router } from "express";
+import express, { Router } from "express";
 import {
   addProduct,
   getAllProducts,
@@ -25,12 +25,19 @@ const productRouter = () => {
   router.get("/:slug", getProductDetails);
 
   // ── Admin-only mutation routes ────────────────────────────────────────────
-  router.post("/", requireAuth, requireAdmin, addProduct);
+  router.post(
+    "/",
+    requireAuth,
+    requireAdmin,
+    express.json({ limit: "2mb" }),
+    addProduct,
+  );
   router.put(
     "/:id",
     requireAuth,
     requireAdmin,
     validateObjectId(),
+    express.json({ limit: "2mb" }),
     updateProduct,
   );
   router.delete(

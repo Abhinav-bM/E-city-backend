@@ -5,8 +5,8 @@ import { asyncHandler } from "../utils/async-handler.js";
 // Add product to wishlist
 const addToWishlist = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
-  const productId = req.body.product_id;
-  const wishlist = await wishlistServices.addToWishlist(userId, productId);
+  const variantId = req.body.variant_id;
+  const wishlist = await wishlistServices.addToWishlist(userId, variantId);
   return sendResponse(
     res,
     200,
@@ -19,8 +19,8 @@ const addToWishlist = asyncHandler(async (req, res) => {
 // Remove product from wishlist
 const removeFromWishlist = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
-  const productId = req.body.product_id;
-  const wishlist = await wishlistServices.removeFromWishlist(userId, productId);
+  const variantId = req.body.variant_id;
+  const wishlist = await wishlistServices.removeFromWishlist(userId, variantId);
   return sendResponse(
     res,
     200,

@@ -1,6 +1,21 @@
 import mongoose from "mongoose";
 import { slugify } from "../utils/misc.js";
 
+// Helper to sanitize and normalize variant attribute keys before saving to DB
+const normalizeAttributeName = (name) => {
+  if (!name || typeof name !== "string") return name;
+  const lowerName = name.toLowerCase().trim();
+
+  // Standardize common tech variants
+  if (lowerName === "ram") return "Rom";
+  if (lowerName === "rom" || lowerName === "storage") return "Storage";
+  if (lowerName === "color" || lowerName === "colour") return "Color";
+  if (lowerName === "size") return "Size";
+
+  // Default fallback: Title Case
+  return name.charAt(0).toUpperCase() + name.slice(1);
+};
+
 //Base/parent Product schema
 const BaseProductSchema = new mongoose.Schema(
   {
@@ -68,6 +83,21 @@ const BaseProductSchema = new mongoose.Schema(
 BaseProductSchema.index({ category: 1 });
 BaseProductSchema.index({ brand: 1 });
 BaseProductSchema.index({ isActive: 1 });
+
+// Normalize base product attribute names before saving to ensure frontend filtering consistency
+BaseProductSchema.pre("save", function (next) {
+  if (
+    this.isModified("variantAttributes") &&
+    Array.isArray(this.variantAttributes)
+  ) {
+    this.variantAttributes.forEach((attr) => {
+      if (attr.name) {
+        attr.name = normalizeAttributeName(attr.name);
+      }
+    });
+  }
+  next();
+});
 
 // Product Variant Schema (each variant is a separate product)
 const ProductVariantSchema = new mongoose.Schema(
@@ -170,6 +200,19 @@ const ProductVariantSchema = new mongoose.Schema(
 
 // Generate slug from title and attributes to ensure uniqueness
 ProductVariantSchema.pre("save", async function (next) {
+  // Normalize attribute keys to prevent duplicates like "Ram" vs "RAM" in frontend facets
+  if (
+    this.isModified("attributes") &&
+    this.attributes &&
+    typeof this.attributes === "object"
+  ) {
+    const normalizedAttributes = {};
+    for (const [key, value] of Object.entries(this.attributes)) {
+      normalizedAttributes[normalizeAttributeName(key)] = value;
+    }
+    this.attributes = normalizedAttributes;
+  }
+
   // Only generate slug if it's a new document or title/attributes have changed
   if (this.isNew || this.isModified("title") || this.isModified("attributes")) {
     // Build slug from title + variant attributes for uniqueness and SEO

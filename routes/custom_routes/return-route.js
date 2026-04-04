@@ -5,7 +5,7 @@ import {
   getAllReturns,
   updateReturnStatus,
 } from "../../controllers/return-controller.js";
-import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
+import { requireAuth, requireAdminAuth } from "../../middlewares/auth.js";
 import { validateObjectId } from "../../middlewares/validate-id-middleware.js";
 
 const router = express.Router();
@@ -15,11 +15,10 @@ router.post("/request", requireAuth, requestReturn);
 router.get("/my", requireAuth, getMyReturns);
 
 // ── Admin Routes ─────────────────────────────────────────────────────────────
-router.get("/all", requireAuth, requireAdmin, getAllReturns);
+router.get("/all", requireAdminAuth, getAllReturns);
 router.put(
   "/:returnId/status",
-  requireAuth,
-  requireAdmin,
+  requireAdminAuth,
   validateObjectId("returnId"),
   updateReturnStatus,
 );

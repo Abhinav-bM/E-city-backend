@@ -8,7 +8,7 @@ import {
   updateStatus,
   downloadInvoice,
 } from "../../controllers/order-controller.js";
-import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
+import { requireAuth, requireAdminAuth } from "../../middlewares/auth.js";
 import { validateObjectId } from "../../middlewares/validate-id-middleware.js";
 import { validateRequest } from "../../middlewares/validation-middleware.js";
 import {
@@ -32,11 +32,10 @@ const orderRouter = () => {
   router.get("/:id/invoice", requireAuth, validateObjectId(), downloadInvoice);
 
   // ─── Admin routes ─────────────────────────────────────────────────────────────
-  router.get("/", requireAuth, requireAdmin, getAllOrders);
+  router.get("/", requireAdminAuth, getAllOrders);
   router.patch(
     "/:id/status",
-    requireAuth,
-    requireAdmin,
+    requireAdminAuth,
     validateObjectId(),
     updateStatus,
   );

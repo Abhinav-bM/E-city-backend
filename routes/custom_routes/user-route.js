@@ -7,13 +7,13 @@ import {
   removeAddress,
   getAllUsers,
 } from "../../controllers/user-controller.js";
-import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
+import { requireAuth, requireAdminAuth } from "../../middlewares/auth.js";
 
 const profileRouter = () => {
   const router = Router();
 
   // Admin route
-  router.get("/all", requireAuth, requireAdmin, getAllUsers);
+  router.get("/all", requireAdminAuth, getAllUsers);
 
   // Customer routes (Profile)
   router.get("/", requireAuth, getUserProfile);

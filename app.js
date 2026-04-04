@@ -59,7 +59,11 @@ const FRONTEND_URL_ADMIN = process.env.FRONTEND_URL_ADMIN;
 // Hardcoding it unconditionally would allow dev machines to bypass strict CORS in prod.
 const allowedOrigins = [FRONTEND_URL_USER, FRONTEND_URL_ADMIN].filter(Boolean);
 if (process.env.NODE_ENV !== "production") {
-  allowedOrigins.push("http://localhost:3000", "http://localhost:5173");
+  allowedOrigins.push(
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+  );
 }
 
 app.use(

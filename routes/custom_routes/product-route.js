@@ -13,7 +13,7 @@ import {
   getProductByBaseId,
   updateProduct,
 } from "../../controllers/product-controller.js";
-import { requireAuth, requireAdmin } from "../../middlewares/auth.js";
+import { requireAdminAuth } from "../../middlewares/auth.js";
 import { validateObjectId } from "../../middlewares/validate-id-middleware.js";
 
 const productRouter = () => {
@@ -27,26 +27,18 @@ const productRouter = () => {
   // ── Admin-only mutation routes ────────────────────────────────────────────
   router.post(
     "/",
-    requireAuth,
-    requireAdmin,
+    requireAdminAuth,
     express.json({ limit: "2mb" }),
     addProduct,
   );
   router.put(
     "/:id",
-    requireAuth,
-    requireAdmin,
+    requireAdminAuth,
     validateObjectId(),
     express.json({ limit: "2mb" }),
     updateProduct,
   );
-  router.delete(
-    "/:id",
-    requireAuth,
-    requireAdmin,
-    validateObjectId(),
-    deleteProduct,
-  );
+  router.delete("/:id", requireAdminAuth, validateObjectId(), deleteProduct);
 
   return router;
 };

@@ -33,6 +33,13 @@ const orderRouter = () => {
 
   // ─── Admin routes ─────────────────────────────────────────────────────────────
   router.get("/", requireAdminAuth, getAllOrders);
+  router.get("/admin/:id", requireAdminAuth, validateObjectId(), getOrderDetail);
+  router.get(
+    "/admin/:id/invoice",
+    requireAdminAuth,
+    validateObjectId(),
+    downloadInvoice,
+  );
   router.patch(
     "/:id/status",
     requireAdminAuth,

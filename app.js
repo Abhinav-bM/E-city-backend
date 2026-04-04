@@ -37,6 +37,7 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
+import { startPaymentReconciliationWorker } from "./workers/payment-reconciliation.js";
 const app = express();
 
 // Trust reverse proxy for Secure cookies (Render, Heroku, Vercel etc)
@@ -79,6 +80,9 @@ app.use(
     ],
   }),
 );
+
+// Start background workers
+startPaymentReconciliationWorker();
 app.use(cookieParser());
 
 app.use(csrfProtection);

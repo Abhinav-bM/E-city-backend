@@ -133,7 +133,7 @@ const issueRazorpayRefund = async ({
  *   stockFailure → true if stock was unavailable at payment time
  *   refundId     → Razorpay refund ID if a refund was issued, else null
  */
-const processVerifiedPayment = async ({
+export const processVerifiedPayment = async ({
   razorpay_order_id,
   razorpay_payment_id,
 }) => {

@@ -23,6 +23,16 @@ export const csrfProtection = (req, res, next) => {
     return next();
   }
 
+  // NEW: Skip CSRF if the request is unauthenticated.
+  // CSRF is only a threat when there is an active session/cookie to hijack.
+  // If no auth tokens are present, this is a public request (like Login/Register).
+  const authCookie = req.cookies["accessToken"];
+  const adminAuthCookie = req.cookies["adminAccessToken"];
+
+  if (!authCookie && !adminAuthCookie) {
+    return next();
+  }
+
   const csrfCookie = req.cookies["XSRF-TOKEN"];
   const csrfHeader = req.headers["x-xsrf-token"];
 

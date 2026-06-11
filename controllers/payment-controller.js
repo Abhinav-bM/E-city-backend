@@ -222,6 +222,25 @@ export const processVerifiedPayment = async ({
     refundId = refund?.id ?? null;
   }
 
+  if (resultOrder) {
+    try {
+      const USER = (await import("../models/user.js")).default;
+      const user = await USER.findById(resultOrder.userId).lean();
+      if (user && user.pushToken) {
+        const { sendPushNotification } = await import("../services/push-notification-service.js");
+        const lastSix = resultOrder._id.toString().substring(resultOrder._id.toString().length - 6).toUpperCase();
+        sendPushNotification(
+          user.pushToken,
+          "Payment Successful! 🎉",
+          `Your payment of ₹${resultOrder.totalAmount} was successful. Order ID: ${lastSix}`,
+          { orderId: resultOrder._id.toString(), event: "payment_success" }
+        ).catch(() => {});
+      }
+    } catch (pushErr) {
+      logger.error("Failed to send push notification for payment success:", pushErr);
+    }
+  }
+
   return { order: resultOrder, stockFailure, refundId };
 };
 

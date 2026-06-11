@@ -200,6 +200,8 @@ const createOrder = async ({
       { $set: { items: [], totalItems: 0, subtotal: 0 } },
     );
 
+    triggerOrderStatusPushNotification(order._id, "Placed").catch(() => {});
+
     return order;
   }
 
@@ -277,6 +279,41 @@ const getOrderById = async (orderId) => {
   return order;
 };
 
+const triggerOrderStatusPushNotification = async (orderId, newStatus, trackingId = "") => {
+  try {
+    const orderObj = await ORDER.findById(orderId).populate("userId").lean();
+    const user = orderObj?.userId;
+    if (user && user.pushToken) {
+      let title = "Order Update";
+      let body = `Your order status has changed to ${newStatus}`;
+      if (newStatus === "Placed") {
+        title = "Order Placed Successfully! 🎉";
+        body = `Your order has been placed successfully! Order ID: ${orderId.toString().substring(orderId.toString().length - 6).toUpperCase()}`;
+      } else if (newStatus === "Confirmed") {
+        title = "Order Confirmed! 🎉";
+        body = "Thank you! Your order has been confirmed and is being processed.";
+      } else if (newStatus === "Shipped") {
+        title = "Order Shipped! 🚚";
+        body = `Great news! Your order has been shipped.${trackingId ? ` Tracking ID: ${trackingId}` : ""}`;
+      } else if (newStatus === "Delivered") {
+        title = "Order Delivered! 🎁";
+        body = "Your package has been delivered. Enjoy your gadget!";
+      } else if (newStatus === "Cancelled") {
+        title = "Order Cancelled ❌";
+        body = "Your order has been cancelled successfully.";
+      }
+
+      const { sendPushNotification } = await import("./push-notification-service.js");
+      await sendPushNotification(user.pushToken, title, body, {
+        orderId: orderId.toString(),
+        status: newStatus,
+      });
+    }
+  } catch (err) {
+    console.error("Error triggering push notification:", err);
+  }
+};
+
 /**
  * updateOrderStatus — admin: move order through lifecycle
  * Stock revert on cancellation is wrapped in a transaction to prevent
@@ -331,6 +368,8 @@ const updateOrderStatus = async (orderId, newStatus, extraData = {}) => {
       }
     }
 
+    triggerOrderStatusPushNotification(orderId, newStatus, extraData.trackingId).catch(() => {});
+
     return order;
   }
 
@@ -383,6 +422,8 @@ const updateOrderStatus = async (orderId, newStatus, extraData = {}) => {
   } finally {
     await session.endSession();
   }
+
+  triggerOrderStatusPushNotification(orderId, "Cancelled").catch(() => {});
 
   return updatedOrder;
 };
@@ -537,6 +578,8 @@ const createDirectOrder = async ({
     } finally {
       await session.endSession();
     }
+
+    triggerOrderStatusPushNotification(order._id, "Placed").catch(() => {});
 
     return order;
   }

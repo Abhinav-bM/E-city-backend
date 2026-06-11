@@ -6,6 +6,7 @@ import {
   updateAddress,
   removeAddress,
   getAllUsers,
+  updatePushToken,
 } from "../../controllers/user-controller.js";
 import { requireAuth, requireAdminAuth } from "../../middlewares/auth.js";
 
@@ -18,6 +19,7 @@ const profileRouter = () => {
   // Customer routes (Profile)
   router.get("/", requireAuth, getUserProfile);
   router.put("/", requireAuth, updateUserProfile);
+  router.post("/push-token", requireAuth, updatePushToken);
 
   // Customer routes (Address Book)
   router.post("/address", requireAuth, addAddress);

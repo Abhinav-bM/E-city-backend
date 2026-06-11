@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema(
     email: { type: String, unique: true, sparse: true, lowercase: true },
     addresses: [addressSchema],
     isActive: { type: Boolean, default: true },
+    pushToken: { type: String },
   },
   { timestamps: true },
 );

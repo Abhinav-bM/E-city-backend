@@ -134,3 +134,24 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   const users = await USER.find().select("-__v").sort({ createdAt: -1 });
   return sendResponse(res, 200, true, "Users fetched successfully", users);
 });
+
+export const updatePushToken = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const { pushToken } = req.body;
+
+  if (!pushToken) {
+    return sendError(res, 400, "Push token is required");
+  }
+
+  const user = await USER.findByIdAndUpdate(
+    userId,
+    { pushToken },
+    { new: true }
+  ).select("-__v");
+
+  if (!user) return sendError(res, 404, "User not found");
+
+  return sendResponse(res, 200, true, "Push token updated successfully", {
+    pushToken: user.pushToken,
+  });
+});

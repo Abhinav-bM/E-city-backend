@@ -92,19 +92,30 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   const xsrfToken = crypto.randomBytes(32).toString("hex");
   setXsrfTokenCookie(res, xsrfToken);
 
-  // After verifying OTP successfully
-  return sendResponse(res, 200, true, "OTP verified successfully", {
+  const responseData = {
     user: {
       userId: user._id,
       phone: user.phone,
       name: user.name,
     },
     xsrfToken,
-  });
+  };
+
+  if (req.headers["x-client-platform"] === "mobile") {
+    responseData.accessToken = accessToken;
+    responseData.refreshToken = refreshToken;
+  }
+
+  // After verifying OTP successfully
+  return sendResponse(res, 200, true, "OTP verified successfully", responseData);
 });
 
 export const refresh = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies?.refreshToken;
+  let refreshToken = req.cookies?.refreshToken;
+  if (!refreshToken && req.headers["x-client-platform"] === "mobile") {
+    refreshToken = req.body?.refreshToken || req.headers["x-refresh-token"];
+  }
+
   if (!refreshToken) {
     return sendError(res, 401, "No refresh token provided");
   }
@@ -130,9 +141,13 @@ export const refresh = asyncHandler(async (req, res) => {
   const xsrfToken = crypto.randomBytes(32).toString("hex");
   setXsrfTokenCookie(res, xsrfToken);
 
-  return sendResponse(res, 200, true, "Refresh token refreshed successfully", {
-    xsrfToken,
-  });
+  const responseData = { xsrfToken };
+  if (req.headers["x-client-platform"] === "mobile") {
+    responseData.accessToken = newAccessToken;
+    responseData.refreshToken = newRefreshToken;
+  }
+
+  return sendResponse(res, 200, true, "Refresh token refreshed successfully", responseData);
 });
 
 export const logout = asyncHandler(async (req, res) => {

@@ -144,6 +144,7 @@ const getProductDetailsByVariantSlug = async (variantSlug) => {
       ? variant.images
       : baseProductDoc?.images || []
     ).map((img) => (typeof img === "string" ? img : img.url)),
+    inventoryType: variant.inventoryType || "Quantity",
     isAvailable: variant.stock > 0,
     isDefault: variant.isDefault,
   }));
@@ -425,8 +426,10 @@ const getProductsGroupedByVariant = async (
       baseCreatedAt: base?.createdAt,
 
       // Variant-specific fields (from the selected representative variant)
+      _id: variant._id,
       variantId: variant._id,
       title: variant.title,
+      condition: variant.condition,
       attributes: variant.attributes,
       sellingPrice: variant.sellingPrice,
       actualPrice: variant?.actualPrice || 0,

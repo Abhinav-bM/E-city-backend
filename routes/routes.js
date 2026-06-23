@@ -15,6 +15,7 @@ import orderRouter from "./custom_routes/order-route.js";
 import paymentRouter from "./custom_routes/payment-route.js";
 import returnRouter from "./custom_routes/return-route.js";
 import profileRouter from "./custom_routes/user-route.js";
+import reviewRouter from "./custom_routes/review-route.js";
 
 export const routes = (app) => {
   const router = Router();
@@ -32,6 +33,7 @@ export const routes = (app) => {
   router.use("/payment", mutationLimiter, paymentRouter());
   router.use("/return", returnRouter);
   router.use("/profile", mutationLimiter, profileRouter());
+  router.use("/product/reviews", mutationLimiter, reviewRouter());
 
   // Mount product LAST because it has catch-all /:slug route
   router.use("/product", productRouter());

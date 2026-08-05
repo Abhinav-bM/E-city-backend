@@ -71,19 +71,20 @@ const generateInvoicePDF = (order, stream) => {
 
   doc.font("Helvetica").fillColor(PRIMARY);
   doc.text(
-    `${addr.firstName || ""} ${addr.lastName || ""}`.trim() ||
-      customer.name ||
-      "Customer",
+    addr.fullName || customer.name || "Customer",
     350,
     metaY + 16,
     { width: pageWidth - 300, align: "right" },
   );
-  doc.text(addr.address || "", 350, metaY + 32, {
+  
+  const fullAddress = [addr.addressLine1, addr.addressLine2, addr.landmark].filter(Boolean).join(", ");
+  doc.text(fullAddress, 350, metaY + 32, {
     width: pageWidth - 300,
     align: "right",
   });
+  
   doc.text(
-    [addr.city, addr.state, addr.zip].filter(Boolean).join(", "),
+    [addr.city, addr.state, addr.pincode].filter(Boolean).join(", "),
     350,
     metaY + 48,
     { width: pageWidth - 300, align: "right" },

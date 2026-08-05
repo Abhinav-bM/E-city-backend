@@ -5,6 +5,7 @@ const addressSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   addressLine1: { type: String, required: true },
   addressLine2: { type: String },
+  landmark: { type: String },
   city: { type: String, required: true },
   state: { type: String, required: true },
   postalCode: { type: String, required: true },
@@ -19,6 +20,9 @@ const userSchema = new mongoose.Schema(
     email: { type: String, unique: true, sparse: true, lowercase: true },
     addresses: [addressSchema],
     isActive: { type: Boolean, default: true },
+    // Incremented on logout to invalidate all existing refresh tokens.
+    // Any stolen token with an old version number will fail the refresh check.
+    refreshTokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

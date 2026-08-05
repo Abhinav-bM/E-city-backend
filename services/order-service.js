@@ -4,6 +4,12 @@ import CART from "../models/cart-model.js";
 import { PRODUCT_VARIANT } from "../models/product-model.js";
 import INVENTORY_UNIT from "../models/inventory-model.js";
 
+const throwError = (msg, code = 400) => {
+  const err = new Error(msg);
+  err.statusCode = code;
+  throw err;
+};
+
 // ── Shared helper: atomically reduce stock for a confirmed/COD order ───────────
 // Called during COD order creation (within transaction) and payment verification.
 // Returns an array of {productVariantId, quantity, inventoryUnitId} for rollback.
@@ -14,24 +20,20 @@ export const deductOrderStock = async (orderItems, session) => {
       const updated = await PRODUCT_VARIANT.findOneAndUpdate(
         { _id: item.productVariantId, stock: { $gte: item.quantity } },
         { $inc: { stock: -item.quantity } },
-        { new: true, session },
+        { new: true },
       );
       if (!updated) {
-        throw new Error(
-          `A product became out of stock. Please refresh and try again.`,
-        );
+        throwError(`A product became out of stock. Please refresh and try again.`);
       }
     } else {
       // Unique-item: mark as Reserved (idempotent — already "Reserved" in pending order)
       const updated = await INVENTORY_UNIT.findOneAndUpdate(
         { _id: item.inventoryUnitId, status: "Reserved" },
         { $set: { status: "Reserved" } }, // no-op if already Reserved
-        { new: true, session },
+        { new: true },
       );
       if (!updated) {
-        throw new Error(
-          `A unique item is no longer available. Checkout cannot proceed.`,
-        );
+        throwError(`A unique item is no longer available. Checkout cannot proceed.`);
       }
     }
   }
@@ -51,36 +53,63 @@ const createOrder = async ({
   shippingAddress,
   paymentMethod = "COD",
   notes,
+  cartItems: payloadCartItems,
 }) => {
-  // 1. Fetch cart with full population
-  const cart = await CART.findOne({ userId }).populate({
-    path: "items.productVariantId",
-    populate: { path: "baseProductId", select: "title" },
-  });
+  let itemsToProcess = payloadCartItems;
 
-  if (!cart || cart.items.length === 0) {
-    throw new Error("Your cart is empty.");
+  if (!itemsToProcess || itemsToProcess.length === 0) {
+    const cart = await CART.findOne({ userId }).populate({
+      path: "items.productVariantId",
+      populate: { path: "baseProductId", select: "title" },
+    });
+    itemsToProcess = cart ? cart.items : [];
+  }
+
+  if (!itemsToProcess || itemsToProcess.length === 0) {
+    throwError("Your cart is empty.");
   }
 
   // 2. Build order items + validate stock (read-only — no deduction yet for Razorpay)
   const orderItems = [];
   let subtotal = 0;
 
-  for (const cartItem of cart.items) {
-    const variant = cartItem.productVariantId;
-    if (!variant)
-      throw new Error("A product in your cart is no longer available.");
+  for (const cartItem of itemsToProcess) {
+    let variantId = typeof cartItem.productVariantId === 'object' 
+      ? cartItem.productVariantId._id 
+      : cartItem.productVariantId;
+      
+    let variant = null;
+    try {
+      if (mongoose.Types.ObjectId.isValid(variantId)) {
+        variant = await PRODUCT_VARIANT.findById(variantId).populate("baseProductId").lean();
+        
+        // Fallback: If not found as variant, check if it was accidentally a Base Product ID (from old cart state)
+        if (!variant) {
+          variant = await PRODUCT_VARIANT.findOne({ baseProductId: variantId }).populate("baseProductId").lean();
+        }
+      } else if (typeof variantId === 'string') {
+        // Fallback: If it's a slug, try to find the base product first
+        const baseProduct = await mongoose.model("BaseProduct").findOne({ slug: variantId }).lean();
+        if (baseProduct) {
+          variant = await PRODUCT_VARIANT.findOne({ baseProductId: baseProduct._id }).populate("baseProductId").lean();
+        }
+      }
+    } catch (err) {
+      // Ignore cast errors and just let it fall through to the null check
+    }
 
-    const priceAtOrder = cartItem.priceAtAdd;
+    if (!variant) {
+      throwError("A product in your cart is no longer available. Please clear your cart and try again.");
+    }
+
+    const priceAtOrder = variant.sellingPrice;
     const quantity = cartItem.quantity;
 
     // ── Quantity-based: validate availability, but DO NOT decrement yet ──────
     if (variant.inventoryType !== "Unique") {
       const freshVariant = await PRODUCT_VARIANT.findById(variant._id).lean();
       if (!freshVariant || freshVariant.stock < quantity) {
-        throw new Error(
-          `"${variant.baseProductId?.title || "A product"}" only has ${freshVariant?.stock ?? 0} units left.`,
-        );
+        throwError(`"${variant.baseProductId?.title || "A product"}" only has ${freshVariant?.stock ?? 0} units left.`);
       }
     }
 
@@ -93,9 +122,7 @@ const createOrder = async ({
         isArchived: false,
       }).lean();
       if (!availableUnit) {
-        throw new Error(
-          `"${variant.baseProductId?.title || "A product"}" is no longer available.`,
-        );
+        throwError(`"${variant.baseProductId?.title || "A product"}" is no longer available.`);
       }
       // For Razorpay: we mark "Reserved" at payment time.
       // For COD: we'll reserve inside the transaction below.
@@ -121,10 +148,8 @@ const createOrder = async ({
 
   // ── COD path: full transactional stock deduction ──────────────────────────
   if (paymentMethod === "COD") {
-    const session = await mongoose.startSession();
+    
     let order;
-    try {
-      await session.withTransaction(async () => {
         // For Unique items being reserved via COD, do atomic reservation
         for (const item of orderItems) {
           if (item.inventoryUnitId) {
@@ -135,10 +160,10 @@ const createOrder = async ({
                 isArchived: false,
               },
               { $set: { status: "Reserved", orderId: "pending" } },
-              { new: true, session },
+              { new: true },
             );
             if (!reserved) {
-              throw new Error(
+              throwError(
                 `A unique item was just taken. Please try again.`,
               );
             }
@@ -147,10 +172,10 @@ const createOrder = async ({
             const updated = await PRODUCT_VARIANT.findOneAndUpdate(
               { _id: item.productVariantId, stock: { $gte: item.quantity } },
               { $inc: { stock: -item.quantity } },
-              { new: true, session },
+              { new: true },
             );
             if (!updated) {
-              throw new Error(
+              throwError(
                 `A product ran out of stock. Please refresh and try again.`,
               );
             }
@@ -173,7 +198,7 @@ const createOrder = async ({
               stockDeducted: true, // flag: stock was already deducted
             },
           ],
-          { session },
+          {},
         );
         order = order[0];
 
@@ -186,13 +211,10 @@ const createOrder = async ({
           await INVENTORY_UNIT.updateMany(
             { _id: { $in: uniqueUnitIds } },
             { $set: { orderId: order._id.toString() } },
-            { session },
+            {},
           );
         }
-      });
-    } finally {
-      await session.endSession();
-    }
+
 
     // Clear cart for COD after successful transaction
     await CART.findOneAndUpdate(
@@ -233,8 +255,8 @@ const createOrder = async ({
 const getOrdersByUser = async (userId) => {
   return ORDER.find({ userId })
     .sort({ createdAt: -1 })
-    .populate("items.productVariantId", "attributes sellingPrice images")
-    .populate("items.baseProductId", "title images")
+    .populate("items.productVariantId", "attributes sellingPrice images slug")
+    .populate("items.baseProductId", "title images slug")
     .lean();
 };
 
@@ -253,7 +275,7 @@ const getAllOrders = async ({ status, page = 1, limit = 20 } = {}) => {
     .skip(skip)
     .limit(limit)
     .populate("userId", "name phone email")
-    .populate("items.baseProductId", "title images")
+    .populate("items.baseProductId", "title images slug")
     .lean();
 
   return { orders, total, page, totalPages: Math.ceil(total / limit) };
@@ -267,13 +289,13 @@ const getOrderById = async (orderId) => {
     .populate("userId", "name phone email")
     .populate(
       "items.productVariantId",
-      "attributes sellingPrice images inventoryType",
+      "attributes sellingPrice images inventoryType slug",
     )
-    .populate("items.baseProductId", "title images brand")
+    .populate("items.baseProductId", "title images brand slug")
     .populate("items.inventoryUnitId", "imei serialNumber conditionGrade")
     .lean();
 
-  if (!order) throw new Error("Order not found.");
+  if (!order) throwError("Order not found.");
   return order;
 };
 
@@ -284,7 +306,7 @@ const getOrderById = async (orderId) => {
  */
 const updateOrderStatus = async (orderId, newStatus, extraData = {}) => {
   const order = await ORDER.findById(orderId);
-  if (!order) throw new Error("Order not found.");
+  if (!order) throwError("Order not found.");
 
   const prevStatus = order.orderStatus;
 
@@ -306,7 +328,7 @@ const updateOrderStatus = async (orderId, newStatus, extraData = {}) => {
       
       if (requiredImeiCount > 0) {
          if (!extraData.shippedImeis || !Array.isArray(extraData.shippedImeis) || extraData.shippedImeis.length !== requiredImeiCount) {
-             throw new Error(`Strict Validation Failed: Exactly ${requiredImeiCount} IMEI/Serial numbers are required to ship this order.`);
+             throwError(`Strict Validation Failed: Exactly ${requiredImeiCount} IMEI/Serial numbers are required to ship this order.`);
          }
       }
 
@@ -342,16 +364,15 @@ const updateOrderStatus = async (orderId, newStatus, extraData = {}) => {
     return order;
   }
 
-  const session = await mongoose.startSession();
+  
   let updatedOrder;
 
-  try {
-    await session.withTransaction(async () => {
+
       // 1. Mark order as Cancelled
       updatedOrder = await ORDER.findByIdAndUpdate(
         orderId,
         { $set: { orderStatus: "Cancelled" } },
-        { new: true, session },
+        { new: true },
       );
 
       // 2. Revert unique inventory units to Available
@@ -363,7 +384,7 @@ const updateOrderStatus = async (orderId, newStatus, extraData = {}) => {
         await INVENTORY_UNIT.updateMany(
           { _id: { $in: uniqueUnitIds } },
           { $set: { status: "Available", orderId: null } },
-          { session },
+          {},
         );
       }
 
@@ -374,15 +395,12 @@ const updateOrderStatus = async (orderId, newStatus, extraData = {}) => {
             await PRODUCT_VARIANT.findByIdAndUpdate(
               item.productVariantId,
               { $inc: { stock: item.quantity } },
-              { session },
+              {},
             );
           }
         }
       }
-    });
-  } finally {
-    await session.endSession();
-  }
+
 
   return updatedOrder;
 };
@@ -402,7 +420,7 @@ const createDirectOrder = async ({
   directItems,
 }) => {
   if (!directItems || !Array.isArray(directItems) || directItems.length === 0) {
-    throw new Error("No items provided for direct checkout.");
+    throwError("No items provided for direct checkout.");
   }
 
   const orderItems = [];
@@ -412,7 +430,7 @@ const createDirectOrder = async ({
     // ── Security: validate quantity from frontend ──────────────────────────
     const quantity = parseInt(item.quantity, 10);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
-      throw new Error(
+      throwError(
         "Invalid quantity. Must be a whole number between 1 and 100.",
       );
     }
@@ -420,7 +438,7 @@ const createDirectOrder = async ({
     const variant = await PRODUCT_VARIANT.findById(
       item.productVariantId,
     ).populate("baseProductId", "title");
-    if (!variant) throw new Error("A product selected is no longer available.");
+    if (!variant) throwError("A product selected is no longer available.");
 
     // Backend price — NEVER trust frontend price
     const priceAtOrder = variant.sellingPrice;
@@ -428,7 +446,7 @@ const createDirectOrder = async ({
     // ── Quantity-based: validate only ─────────────────────────────────────
     if (variant.inventoryType !== "Unique") {
       if (variant.stock < quantity) {
-        throw new Error(
+        throwError(
           `"${variant.baseProductId?.title || "A product"}" only has ${variant.stock ?? 0} units left.`,
         );
       }
@@ -443,7 +461,7 @@ const createDirectOrder = async ({
         isArchived: false,
       }).lean();
       if (!availableUnit) {
-        throw new Error(
+        throwError(
           `"${variant.baseProductId?.title || "A product"}" is no longer available.`,
         );
       }
@@ -468,10 +486,9 @@ const createDirectOrder = async ({
 
   // ── COD path: full transactional stock deduction ──────────────────────────
   if (paymentMethod === "COD") {
-    const session = await mongoose.startSession();
+    
     let order;
-    try {
-      await session.withTransaction(async () => {
+
         for (const item of orderItems) {
           if (item.inventoryUnitId) {
             const reserved = await INVENTORY_UNIT.findOneAndUpdate(
@@ -481,10 +498,10 @@ const createDirectOrder = async ({
                 isArchived: false,
               },
               { $set: { status: "Reserved", orderId: "pending" } },
-              { new: true, session },
+              { new: true },
             );
             if (!reserved) {
-              throw new Error(
+              throwError(
                 `A unique item was just taken. Please try again.`,
               );
             }
@@ -492,10 +509,10 @@ const createDirectOrder = async ({
             const updated = await PRODUCT_VARIANT.findOneAndUpdate(
               { _id: item.productVariantId, stock: { $gte: item.quantity } },
               { $inc: { stock: -item.quantity } },
-              { new: true, session },
+              { new: true },
             );
             if (!updated) {
-              throw new Error(
+              throwError(
                 `A product ran out of stock. Please refresh and try again.`,
               );
             }
@@ -518,7 +535,7 @@ const createDirectOrder = async ({
               stockDeducted: true,
             },
           ],
-          { session },
+          {},
         );
         order = order[0];
 
@@ -530,13 +547,10 @@ const createDirectOrder = async ({
           await INVENTORY_UNIT.updateMany(
             { _id: { $in: uniqueUnitIds } },
             { $set: { orderId: order._id.toString() } },
-            { session },
+            {},
           );
         }
-      });
-    } finally {
-      await session.endSession();
-    }
+
 
     return order;
   }

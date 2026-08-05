@@ -22,7 +22,7 @@ export const setRefreshTokenCookie = (
   res,
   token,
   name = "refreshToken",
-  path = "/api/auth/refresh",
+  path = "/",
 ) => {
   const isProd = process.env.NODE_ENV === "production";
   res.cookie(name, token, {
@@ -48,7 +48,7 @@ export const setAccessTokenCookie = (res, token, name = "accessToken") => {
 export const setXsrfTokenCookie = (res, token) => {
   const isProd = process.env.NODE_ENV === "production";
   res.cookie("XSRF-TOKEN", token, {
-    httpOnly: true, // Hide from document.cookie, frontend uses JSON payload in memory
+    httpOnly: false, // Must be false so frontend JS/Axios can read cookie for Double-Submit header
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
     path: "/",

@@ -7,7 +7,7 @@ import { asyncHandler } from "../utils/async-handler.js";
 // ── Customer: place an order from active cart ─────────────────────────────────
 const placeOrder = asyncHandler(async (req, res) => {
   const userId = req.user.userId;
-  const { shippingAddress, paymentMethod, notes, existingOrderId } = req.body;
+  const { shippingAddress, paymentMethod, notes, existingOrderId, cartItems } = req.body;
 
   if (!shippingAddress && !existingOrderId) {
     return sendError(res, 400, "Shipping address is required.");
@@ -36,6 +36,7 @@ const placeOrder = asyncHandler(async (req, res) => {
       shippingAddress,
       paymentMethod: paymentMethod || "COD",
       notes,
+      cartItems,
     });
   }
 

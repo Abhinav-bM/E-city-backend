@@ -159,11 +159,11 @@ const getAllProducts = asyncHandler(async (req, res) => {
   ];
 
   Object.keys(req.query).forEach((key) => {
-    if (!knownKeys.includes(key)) {
+    if (!knownKeys.includes(key) && req.query[key] !== "") {
       // Assume it's an attribute filter (e.g. "Color", "Storage")
       // Support comma-separated values
       // backend expects standard keys, so we trust frontend sends "Color" not "color" if that's how it's stored.
-      const values = req.query[key].split(",");
+      const values = req.query[key].split(",").filter((v) => v !== "");
       if (values.length > 0) {
         // Use dot notation for nested attribute query in Mongoose
         // e.g. "attributes.Color": { $in: ["Red", "Blue"] }

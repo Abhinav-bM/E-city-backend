@@ -215,18 +215,28 @@ const getProductsGroupedByVariant = async (
   // Calculate how many items to skip for pagination (e.g., page 2 with limit 10 = skip 10)
   const skip = (page - 1) * limit;
 
-  // Resolve category name/slug to ObjectId if it's not a valid ObjectId string
-  if (filters.category && !mongoose.Types.ObjectId.isValid(filters.category)) {
-    const foundCategory = await Category.findOne({
-      $or: [
-        { name: new RegExp(`^${filters.category}$`, "i") },
-        { slug: filters.category },
-      ],
-    }).select("_id");
-    // If not found, use a non-existent ObjectId to ensure zero results instead of a CastError
-    filters.category = foundCategory
-      ? foundCategory._id
-      : new mongoose.Types.ObjectId();
+  // Resolve category (ID string, name, or slug) to BSON ObjectId
+  if (filters.category) {
+    const rawCategory = filters.category;
+    let resolvedCatId = null;
+
+    if (mongoose.Types.ObjectId.isValid(rawCategory)) {
+      resolvedCatId = new mongoose.Types.ObjectId(rawCategory);
+    }
+
+    if (!resolvedCatId) {
+      const foundCategory = await Category.findOne({
+        $or: [
+          { name: new RegExp(`^${rawCategory}$`, "i") },
+          { slug: rawCategory },
+        ],
+      }).select("_id");
+      if (foundCategory) {
+        resolvedCatId = foundCategory._id;
+      }
+    }
+
+    filters.category = resolvedCatId || new mongoose.Types.ObjectId();
   }
 
   // Find all base products matching the provided filters (category, brand, etc.)

@@ -106,17 +106,18 @@ export const removeCartItemSchema = Joi.object({
 // ─── Order schemas ────────────────────────────────────────────────────────────
 
 const shippingAddressSchema = Joi.object({
-  firstName: Joi.string().trim().min(1).max(100).required(),
-  lastName: Joi.string().trim().max(100).optional().allow(""),
+  fullName: Joi.string().trim().min(1).max(100).required(),
   phone: Joi.string()
-    .length(10)
+    .min(10)
+    .max(15)
     .pattern(/^[0-9]+$/)
     .required(),
-  address: Joi.string().trim().min(5).max(400).required(),
-  city: Joi.string().trim().min(2).max(100).required(),
-  state: Joi.string().trim().max(100).optional().allow(""),
-  zip: Joi.string().trim().max(10).optional().allow(""),
-  country: Joi.string().trim().min(2).max(100).optional().default("India"),
+  addressLine1: Joi.string().trim().min(5).max(400).required(),
+  addressLine2: Joi.string().trim().max(400).optional().allow(""),
+  landmark: Joi.string().trim().max(100).optional().allow(""),
+  city: Joi.string().trim().min(1).max(100).optional().allow("", null).default(""),
+  state: Joi.string().trim().min(1).max(100).optional().allow("", null).default(""),
+  pincode: Joi.string().trim().max(10).required(),
 }).unknown(true); // allow address _id if re-used
 
 export const placeOrderSchema = Joi.object({
@@ -127,6 +128,7 @@ export const placeOrderSchema = Joi.object({
     .default("COD"),
   notes: Joi.string().max(500).optional().allow(""),
   existingOrderId: objectIdString.optional().allow(null, ""),
+  cartItems: Joi.array().items(Joi.any()).optional(),
 }).or("shippingAddress", "existingOrderId");
 
 export const placeDirectOrderSchema = Joi.object({

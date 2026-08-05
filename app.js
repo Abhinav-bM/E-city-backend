@@ -32,7 +32,7 @@ for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
     throw new Error(
       `FATAL: Missing required environment variable: "${key}". ` +
-        `Server cannot start without it. Check your .env file.`,
+      `Server cannot start without it. Check your .env file.`,
     );
   }
 }
@@ -44,8 +44,8 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Security headers — must be first middleware.
-// Sets X-Frame-Options, X-Content-Type-Options, HSTS, and more.
-app.use(helmet());
+// Sets X-Frame-Options, X-Content-Type-Options, HSTS, and allow cross-origin resource access for uploaded static files.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 // Use 'combined' format in production (standard Apache log, safe for log aggregators).
 // 'dev' format uses colours and verbose output — not suitable for production log shipping.
@@ -64,12 +64,20 @@ if (process.env.NODE_ENV !== "production") {
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:5173",
+    "https://f67618c44b374b.lhr.life",
   );
 }
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (process.env.NODE_ENV !== "production" && /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
@@ -84,6 +92,7 @@ app.use(
 // Start background workers
 startPaymentReconciliationWorker();
 app.use(cookieParser());
+app.use("/public", express.static("public"));
 
 app.use(csrfProtection);
 app.use(

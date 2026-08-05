@@ -37,13 +37,10 @@ const errorMiddleware = (err, req, res, next) => {
     });
   }
 
-  // In production, never leak raw error details for 500s
-  const message =
-    statusCode === 500
-      ? "An internal server error occurred."
-      : err.message || "An error occurred.";
+  // Temporarily expose raw error details for debugging
+  const message = err.message || "An error occurred.";
 
-  return sendError(res, statusCode, message);
+  return sendError(res, statusCode, message, err.stack);
 };
 
 export { errorMiddleware };

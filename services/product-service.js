@@ -395,7 +395,6 @@ export default {
   getProductDetails,
   getAllProducts,
   deleteProduct,
-  deleteProduct,
   getProductByBaseId,
   updateProduct,
 };

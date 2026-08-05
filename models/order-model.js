@@ -3,13 +3,14 @@ import mongoose from "mongoose";
 // ── Shipping Address ──────────────────────────────────────────────────────────
 const ShippingAddressSchema = new mongoose.Schema(
   {
-    firstName: { type: String, required: true, trim: true },
-    lastName: { type: String, trim: true },
+    fullName: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
-    address: { type: String, required: true, trim: true },
+    addressLine1: { type: String, required: true, trim: true },
+    addressLine2: { type: String, trim: true },
+    landmark: { type: String, trim: true },
     city: { type: String, required: true, trim: true },
-    state: { type: String, trim: true },
-    zip: { type: String, trim: true },
+    state: { type: String, required: true, trim: true },
+    pincode: { type: String, required: true, trim: true },
   },
   { _id: false },
 );
